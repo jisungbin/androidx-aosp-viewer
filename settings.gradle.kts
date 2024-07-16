@@ -39,4 +39,7 @@ dependencyResolutionManagement {
   }
 }
 
-include(":app")
+include(
+  ":app",
+  ":androidx-fetcher",
+)
