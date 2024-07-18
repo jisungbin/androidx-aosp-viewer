@@ -79,6 +79,7 @@ allprojects {
         "kotlin.OptIn",
         "kotlin.RequiresOptIn",
         "kotlin.contracts.ExperimentalContracts",
+        "kotlinx.coroutines.ExperimentalCoroutinesApi",
       )
     }
   }
