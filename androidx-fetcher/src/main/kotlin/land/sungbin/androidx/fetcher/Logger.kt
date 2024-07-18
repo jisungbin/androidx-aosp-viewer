@@ -3,7 +3,7 @@ package land.sungbin.androidx.fetcher
 import java.util.logging.Level
 import java.util.logging.Logger as JavaLogger
 
-public abstract class Logger {
+public open class Logger {
   private val logger by lazy {
     JavaLogger.getLogger(Logger::class.qualifiedName!!).apply {
       level = Level.ALL
