@@ -18,7 +18,7 @@ public class AndroidxRepository(
   private val logger: Logger = Logger.Default,
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  public suspend fun fetch(owner: String, repo: String): List<GitContent> {
+  public suspend fun fetch(): List<GitContent> {
     var httpLogging: HttpLoggingInterceptor? = null
     var eventLogging: LoggingEventListener.Factory? = null
 
@@ -48,12 +48,7 @@ public class AndroidxRepository(
       .build()
 
     val url = base.newBuilder()
-      .addPathSegment("repos")
-      .addPathSegment(owner)
-      .addPathSegment(repo)
-      .addPathSegment("git")
-      .addPathSegment("trees")
-      .addPathSegment("androidx-main")
+      .addPathSegments("repos/androidx/androidx/git/trees/androidx-main")
       .build()
     val request = Request.Builder()
       .url(url)
