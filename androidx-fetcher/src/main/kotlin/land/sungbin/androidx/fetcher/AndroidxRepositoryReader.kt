@@ -1,7 +1,11 @@
 package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -12,13 +16,15 @@ import okio.BufferedSource
 import okio.ByteString.Companion.decodeBase64
 
 internal class AndroidxRepositoryReader(
-  private val logger: Logger,
-  private val client: OkHttpClient,
+  private val logger: Logger = Logger.Default,
+  private val client: OkHttpClient = OkHttpClient(),
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
   suspend fun read(source: BufferedSource): List<GitContent> {
     val snapshotForError = source.buffer.snapshot()
     var root: List<GitContent>? = null
     JsonReader.of(source).use { reader ->
+      reader.beginObject()
       while (reader.hasNext()) {
         when (reader.nextName()) {
           "tree" -> root = readTree(reader)
@@ -33,6 +39,7 @@ internal class AndroidxRepositoryReader(
           else -> reader.skipValue()
         }
       }
+      reader.endObject()
     }
     return root ?: run {
       logger.error {
@@ -44,13 +51,13 @@ internal class AndroidxRepositoryReader(
   }
 
   private suspend fun readTree(reader: JsonReader): List<GitContent> = coroutineScope {
-    val contents = mutableListOf<GitContent>()
+    val contents = mutableListOf<Deferred<GitContent>>()
     reader.beginArray()
     while (reader.hasNext()) {
       var path: String? = null
       var type: String? = null
       var url: String? = null
-      var blob: String? = null
+      var blob: (suspend () -> String?)? = null
 
       reader.beginObject()
       while (reader.hasNext()) {
@@ -72,15 +79,14 @@ internal class AndroidxRepositoryReader(
       }
 
       launch(Dispatchers.Unconfined) {
-        if (type == "blob") {
-          blob = withContext(Dispatchers.IO) { readBlobContent(url) }
-        }
-
-        contents.add(GitContent(path, url, blob))
+        if (type == "blob") blob = { readBlobContent(url) }
+        contents.add(async(Dispatchers.Unconfined) {
+          GitContent(path, url, blob?.let { withContext(ioDispatcher) { it() } })
+        })
       }
     }
     reader.endArray()
-    contents
+    contents.awaitAll()
   }
 
   private suspend fun readBlobContent(url: String): String? {
@@ -90,6 +96,7 @@ internal class AndroidxRepositoryReader(
       var encoding: String? = null
 
       JsonReader.of(response.body.source()).use { reader ->
+        reader.beginObject()
         while (reader.hasNext()) {
           when (reader.nextName()) {
             "content" -> content = reader.nextString()
@@ -97,6 +104,7 @@ internal class AndroidxRepositoryReader(
             else -> reader.skipValue()
           }
         }
+        reader.endObject()
       }
 
       if (content == null || encoding == null) {
