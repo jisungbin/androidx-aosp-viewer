@@ -4,6 +4,13 @@ plugins {
 
 kotlin {
   explicitApi()
+  compilerOptions {
+    optIn.add("okhttp3.ExperimentalOkHttpApi")
+  }
+  sourceSets.all {
+    languageSettings.enableLanguageFeature("ExplicitBackingFields")
+    languageSettings.enableLanguageFeature("ContextReceivers")
+  }
 }
 
 dependencies {
