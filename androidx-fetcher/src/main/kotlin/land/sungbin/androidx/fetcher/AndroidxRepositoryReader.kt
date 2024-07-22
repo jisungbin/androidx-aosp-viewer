@@ -4,9 +4,11 @@ import com.squareup.moshi.JsonReader
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -51,7 +53,9 @@ internal class AndroidxRepositoryReader(
   }
 
   private suspend fun readTree(reader: JsonReader): List<GitContent> = coroutineScope {
+    val contentJobs = mutableListOf<Job>()
     val contents = mutableListOf<Deferred<GitContent>>()
+
     reader.beginArray()
     while (reader.hasNext()) {
       var path: String? = null
@@ -78,7 +82,7 @@ internal class AndroidxRepositoryReader(
         continue
       }
 
-      launch(Dispatchers.Unconfined) {
+      contentJobs += launch(Dispatchers.Unconfined) {
         if (type == "blob") blob = { readBlobContent(url) }
         contents.add(async(Dispatchers.Unconfined) {
           GitContent(path, url, blob?.let { withContext(ioDispatcher) { it() } })
@@ -86,6 +90,8 @@ internal class AndroidxRepositoryReader(
       }
     }
     reader.endArray()
+
+    contentJobs.joinAll()
     contents.awaitAll()
   }
 
