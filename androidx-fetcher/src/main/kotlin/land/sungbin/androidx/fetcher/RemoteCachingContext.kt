@@ -7,7 +7,7 @@ import okio.Path
 public data class RemoteCachingContext(
   public val fs: FileSystem,
   public val directory: Path,
-  public val maxSize: Long,
+  public val maxSize: Long, // bytes
 ) : CoroutineContext.Element {
   override val key: CoroutineContext.Key<RemoteCachingContext> get() = Key
 
