@@ -41,5 +41,6 @@ moshi = { module = "com.squareup.moshi:moshi", version.ref = "moshi" }
 
 test-assertk = { module = "com.willowtreeapps.assertk:assertk", version.ref = "test-assertk" }
 test-kotlin-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin-coroutines" }
+test-okio-fs = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 
 ktlint-cli = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" } # for Renovate

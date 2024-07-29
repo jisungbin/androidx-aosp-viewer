@@ -2,6 +2,7 @@ package land.sungbin.androidx.fetcher
 
 import assertk.assertFailure
 import assertk.assertions.hasMessage
+import jdk.internal.net.http.common.Log.errors
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -20,12 +21,30 @@ class TestLoggerAsserterTest {
       .hasMessage("Expected to find Hello, World! in []")
   }
 
+  @Test fun assertNotContainsDebugMessage() {
+    logger.debug { "Hello, World!" }
+
+    assertFailure { logger.assert { debugs hasNot "Hello, World!" } }
+      .hasMessage("Expected not to find Hello, World! in [Hello, World!]")
+
+    logger.assert(mustAssertAll = false) { debugs hasNot "Hello, World!!" }
+  }
+
   @Test fun assertContainsWarnMessage() {
     logger.warn { "Hello, World!" }
     logger.assert { warns has "Hello, World!" }
 
     assertFailure { logger.assert { warns has "Hello, World!" } }
       .hasMessage("Expected to find Hello, World! in []")
+  }
+
+  @Test fun assertNotContainsWarnMessage() {
+    logger.warn { "Hello, World!" }
+
+    assertFailure { logger.assert { warns hasNot "Hello, World!" } }
+      .hasMessage("Expected not to find Hello, World! in [Hello, World!]")
+
+    logger.assert(mustAssertAll = false) { warns hasNot "Hello, World!!" }
   }
 
   @Test fun assertContainsErrorMessage() {
@@ -36,7 +55,16 @@ class TestLoggerAsserterTest {
       .hasMessage("Expected to find Hello, World! in []")
   }
 
-  @Test fun assertNoUncheckedMessages() {
+  @Test fun assertNotContainsErrorMessage() {
+    logger.error { "Hello, World!" }
+
+    assertFailure { logger.assert { errors hasNot "Hello, World!" } }
+      .hasMessage("Expected not to find Hello, World! in [Hello, World!]")
+
+    logger.assert(mustAssertAll = false) { errors hasNot "Hello, World!!" }
+  }
+
+  @Test fun assertNoUncheckedMessagesWhenMustAssertAll() {
     logger.debug { "Hello, Debug!" }
     logger.debug { "Hello, Debug! - 2" }
     logger.warn { "Hello, Warn!" }
@@ -45,7 +73,7 @@ class TestLoggerAsserterTest {
     logger.error { "Hello, Error! - 2" }
 
     assertFailure {
-      logger.assert {
+      logger.assert(mustAssertAll = true) {
         debugs has "Hello, Debug!"
         warns has "Hello, Warn!"
         errors has "Hello, Error!"
@@ -59,5 +87,20 @@ The following assertions failed (3 failures)
 	org.opentest4j.AssertionFailedError: expected [errors] to be empty but was:<["Hello, Error! - 2"]>
       """.trimIndent(),
       )
+  }
+
+  @Test fun assertHaveUncheckedMessagesWhenMustntAssertAll() {
+    logger.debug { "Hello, Debug!" }
+    logger.debug { "Hello, Debug! - 2" }
+    logger.warn { "Hello, Warn!" }
+    logger.warn { "Hello, Warn! - 2" }
+    logger.error { "Hello, Error!" }
+    logger.error { "Hello, Error! - 2" }
+
+    logger.assert(mustAssertAll = false) {
+      debugs has "Hello, Debug!"
+      warns has "Hello, Warn!"
+      errors has "Hello, Error!"
+    }
   }
 }

@@ -28,6 +28,7 @@ dependencies {
 
   implementation(platform(libs.okhttp.bom))
   testImplementation("com.squareup.okhttp3:mockwebserver3-junit5")
+  testImplementation(libs.test.okio.fs)
   testImplementation(libs.test.kotlin.coroutines)
   testImplementation(kotlin("test-junit5"))
   testImplementation(libs.test.assertk)

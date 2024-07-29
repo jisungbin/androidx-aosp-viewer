@@ -26,9 +26,9 @@ class TestLogger : Logger() {
     errors += lazyMessage()
   }
 
-  fun assert(asserter: context(TestLogger) Asserter.() -> Unit) {
+  fun assert(mustAssertAll: Boolean = true, asserter: context(TestLogger) Asserter.() -> Unit) {
     asserter.invoke(this, TestLoggerAsserter())
-    assertAll {
+    if (mustAssertAll) assertAll {
       assertThat(debugs, "debugs").isEmpty()
       assertThat(warns, "warns").isEmpty()
       assertThat(errors, "errors").isEmpty()
@@ -42,9 +42,16 @@ class TestLogger : Logger() {
         throw AssertionError("Expected to find $text in $this")
       }
     }
+
+    override fun List<String>.hasNot(text: String) {
+      if (contains(text)) {
+        throw AssertionError("Expected not to find $text in $this")
+      }
+    }
   }
 
   @TestDsl interface Asserter {
     infix fun List<String>.has(text: String)
+    infix fun List<String>.hasNot(text: String)
   }
 }

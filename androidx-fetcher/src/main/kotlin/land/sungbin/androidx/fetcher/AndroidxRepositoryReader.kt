@@ -17,12 +17,12 @@ import okhttp3.coroutines.executeAsync
 import okio.BufferedSource
 import okio.ByteString.Companion.decodeBase64
 
-internal class AndroidxRepositoryReader(
+public class AndroidxRepositoryReader(
   private val logger: Logger = Logger.Default,
   private val client: OkHttpClient = OkHttpClient(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  suspend fun read(source: BufferedSource): List<GitContent> {
+  public suspend fun read(source: BufferedSource): List<GitContent> {
     val snapshotForError = source.buffer.snapshot()
     var root: List<GitContent>? = null
     JsonReader.of(source).use { reader ->

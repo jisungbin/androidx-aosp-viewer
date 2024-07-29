@@ -9,16 +9,18 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.ResponseBody
 import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.logging.LoggingEventListener
+import okio.BufferedSource
 
 public class AndroidxRepository(
   private val base: HttpUrl = "https://api.github.com".toHttpUrl(),
   private val logger: Logger = Logger.Default,
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  public suspend fun fetch(): List<GitContent> {
+  public suspend fun fetch(): ResponseBody? {
     var httpLogging: HttpLoggingInterceptor? = null
     var eventLogging: LoggingEventListener.Factory? = null
 
@@ -59,9 +61,9 @@ public class AndroidxRepository(
 
     if (!response.isSuccessful) {
       logger.error { "Failed to fetch the repository: $response" }
-      return emptyList()
+      return null
     }
 
-    return AndroidxRepositoryReader(logger, client, ioDispatcher).read(response.body.source())
+    return response.body
   }
 }
