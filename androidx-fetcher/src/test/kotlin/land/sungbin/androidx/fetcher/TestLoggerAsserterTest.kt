@@ -1,8 +1,14 @@
+/*
+ * Developed by Ji Sungbin 2024.
+ *
+ * Licensed under the MIT.
+ * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
+ */
+
 package land.sungbin.androidx.fetcher
 
 import assertk.assertFailure
 import assertk.assertions.hasMessage
-import jdk.internal.net.http.common.Log.errors
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -85,7 +91,7 @@ The following assertions failed (3 failures)
 	org.opentest4j.AssertionFailedError: expected [debugs] to be empty but was:<["Hello, Debug! - 2"]>
 	org.opentest4j.AssertionFailedError: expected [warns] to be empty but was:<["Hello, Warn! - 2"]>
 	org.opentest4j.AssertionFailedError: expected [errors] to be empty but was:<["Hello, Error! - 2"]>
-      """.trimIndent(),
+        """.trimIndent(),
       )
   }
 

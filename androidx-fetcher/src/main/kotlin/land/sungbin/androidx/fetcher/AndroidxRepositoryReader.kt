@@ -1,3 +1,10 @@
+/*
+ * Developed by Ji Sungbin 2024.
+ *
+ * Licensed under the MIT.
+ * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
+ */
+
 package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
@@ -84,9 +91,9 @@ public class AndroidxRepositoryReader(
 
       contentJobs += launch(Dispatchers.Unconfined) {
         if (type == "blob") blob = { readBlobContent(url) }
-        contents.add(async(Dispatchers.Unconfined) {
+        contents += async(Dispatchers.Unconfined) {
           GitContent(path, url, blob?.let { withContext(ioDispatcher) { it() } })
-        })
+        }
       }
     }
     reader.endArray()

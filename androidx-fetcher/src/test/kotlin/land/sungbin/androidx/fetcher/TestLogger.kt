@@ -1,3 +1,10 @@
+/*
+ * Developed by Ji Sungbin 2024.
+ *
+ * Licensed under the MIT.
+ * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
+ */
+
 package land.sungbin.androidx.fetcher
 
 import assertk.assertAll
@@ -26,7 +33,11 @@ class TestLogger : Logger() {
     errors += lazyMessage()
   }
 
-  fun assert(mustAssertAll: Boolean = true, asserter: context(TestLogger) Asserter.() -> Unit) {
+  fun assert(
+    mustAssertAll: Boolean = true,
+    asserter: context(TestLogger)
+    Asserter.() -> Unit,
+  ) {
     asserter.invoke(this, TestLoggerAsserter())
     if (mustAssertAll) assertAll {
       assertThat(debugs, "debugs").isEmpty()

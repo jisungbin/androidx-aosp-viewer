@@ -1,3 +1,10 @@
+/*
+ * Developed by Ji Sungbin 2024.
+ *
+ * Licensed under the MIT.
+ * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
+ */
+
 package land.sungbin.androidx.fetcher
 
 import assertk.assertThat
@@ -108,7 +115,7 @@ class AndroidxRepositoryReaderTest {
           "url": "https://api.github.com/repos/androidx/androidx/git/blobs/somefile",
           "encoding": "base64"
         }
-        """.trimIndent()
+        """.trimIndent(),
       )
     }
 
@@ -152,7 +159,7 @@ class AndroidxRepositoryReaderTest {
           "content": "",
           "encoding": "utf8"
         }
-        """.trimIndent()
+        """.trimIndent(),
       )
     }
 

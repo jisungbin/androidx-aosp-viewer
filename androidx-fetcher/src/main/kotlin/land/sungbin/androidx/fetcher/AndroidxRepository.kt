@@ -1,3 +1,10 @@
+/*
+ * Developed by Ji Sungbin 2024.
+ *
+ * Licensed under the MIT.
+ * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
+ */
+
 package land.sungbin.androidx.fetcher
 
 import kotlin.coroutines.coroutineContext
@@ -13,7 +20,6 @@ import okhttp3.ResponseBody
 import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
 import okhttp3.logging.LoggingEventListener
-import okio.BufferedSource
 
 public class AndroidxRepository(
   private val base: HttpUrl = "https://api.github.com".toHttpUrl(),

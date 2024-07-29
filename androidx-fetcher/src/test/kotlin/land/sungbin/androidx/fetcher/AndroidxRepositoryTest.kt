@@ -1,9 +1,17 @@
+/*
+ * Developed by Ji Sungbin 2024.
+ *
+ * Licensed under the MIT.
+ * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
+ */
+
 package land.sungbin.androidx.fetcher
 
 import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.doesNotContain
 import assertk.assertions.isEmpty
+import java.net.HttpURLConnection.HTTP_BAD_REQUEST
 import java.nio.file.Path
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -12,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import mockwebserver3.QueueDispatcher
 import mockwebserver3.junit5.internal.MockWebServerExtension
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.Path.Companion.toOkioPath
@@ -76,7 +85,7 @@ class AndroidxRepositoryTest {
 
   @Test fun given_remoteLoggingContext_with_both_logs_enabled_when_fetching_enable_http_and_event_logging(): Unit = runTest {
     val loggingContext = RemoteLoggingContext(
-      httpLogging = HttpLoggingInterceptor.Level.BASIC,
+      httpLogging = HttpLoggingInterceptor.Level.HEADERS,
       eventLogging = true,
     )
     withContext(loggingContext) { repo.fetch() }
@@ -85,6 +94,7 @@ class AndroidxRepositoryTest {
       debugs has "[0 ms] callStart: Request{method=GET, url=${server.url("/")}repos/androidx/androidx/git/trees/androidx-main, " +
         "headers=[X-GitHub-Api-Version:2022-11-28]}"
       debugs has "--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main"
+      debugs hasNot "Authorization: Bearer token"
     }
 
     assertThat(logger.debugs.getOrNull(1).orEmpty()).doesNotContain("cacheMiss")
@@ -114,19 +124,25 @@ class AndroidxRepositoryTest {
       httpLogging = HttpLoggingInterceptor.Level.HEADERS,
       eventLogging = false,
     )
-    val cachingContext = RemoteCachingContext(
-      fs = FakeFileSystem(),
-      directory = testPath.toOkioPath(),
-      maxSize = 1024L,
-    )
-    withContext(loggingContext + cachingContext) { repo.fetch() }
+    val authorizationContext = GitHubAuthorizationContext("token")
+    withContext(loggingContext + authorizationContext) { repo.fetch() }
 
     logger.assert(mustAssertAll = false) {
-      debugs hasNot "--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main"
+      debugs has "Authorization: Bearer token"
     }
   }
 
-  @Test fun given_api_response_is_not_successful_when_fetching_log_error() {
+  @Test fun given_api_response_is_not_successful_when_fetching_log_error(): Unit = runTest {
+    (server.dispatcher as QueueDispatcher).clear()
+    server.enqueue(MockResponse(code = HTTP_BAD_REQUEST))
+    repo.fetch()
 
+    logger.assert {
+      errors has "Failed to fetch the repository: Response{" +
+        "protocol=http/1.1, code=400, " +
+        "message=Client Error, " +
+        "url=${server.url("/")}repos/androidx/androidx/git/trees/androidx-main" +
+        "}"
+    }
   }
 }
