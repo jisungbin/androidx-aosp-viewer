@@ -29,8 +29,8 @@ dependencies {
 
   implementation(platform(libs.okhttp.bom))
   implementation("com.squareup.okhttp3:okhttp")
-  implementation("com.squareup.okhttp3:logging-interceptor")
   implementation("com.squareup.okhttp3:okhttp-coroutines")
+  implementation("com.squareup.okhttp3:logging-interceptor")
 
   implementation(platform(libs.okhttp.bom))
   testImplementation("com.squareup.okhttp3:mockwebserver3-junit5")

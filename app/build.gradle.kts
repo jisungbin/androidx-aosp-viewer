@@ -4,10 +4,17 @@
  * Licensed under the MIT.
  * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
  */
+import java.util.Properties
+
 plugins {
   id("com.android.application")
   kotlin("android")
   kotlin("plugin.compose")
+}
+
+val secrets = Properties().apply {
+  val secrets = rootProject.file("secrets.properties")
+  if (secrets.exists()) secrets.reader().use(::load)
 }
 
 android {
@@ -17,6 +24,13 @@ android {
   defaultConfig {
     minSdk = 21
     targetSdk = 34
+
+    buildConfigField("String", "GH_ID", "\"${secrets["gh-id"]}\"")
+    buildConfigField("String", "GH_SECRET", "\"${secrets["gh-secret"]}\"")
+  }
+
+  buildFeatures {
+    buildConfig = true
   }
 
   compileOptions {
@@ -45,6 +59,8 @@ composeCompiler {
 }
 
 dependencies {
+  implementation(projects.androidxFetcher)
+
   implementation(libs.androidx.activity)
 
   implementation(libs.compose.activity)
@@ -52,6 +68,15 @@ dependencies {
 
   implementation(libs.kotlin.coroutines)
   implementation(libs.kotlin.immutableCollections)
+
+  implementation(platform(libs.okhttp.bom))
+  implementation("com.squareup.okhttp3:okhttp")
+  implementation("com.squareup.okhttp3:okhttp-coroutines")
+  implementation("com.squareup.okhttp3:logging-interceptor")
+  implementation(libs.okio)
+  implementation(libs.moshi)
+
+  implementation(libs.timber)
 
   testImplementation(kotlin("test-junit5"))
   testImplementation(libs.test.kotlin.coroutines)

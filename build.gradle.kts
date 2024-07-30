@@ -21,6 +21,9 @@ plugins {
 idea {
   module {
     excludeDirs = excludeDirs + allprojects.map { it.file(".kotlin") }
+
+    // In a K2 AS, we must specify this explicitly.
+    generatedSourceDirs = generatedSourceDirs + allprojects.map { it.file("build/generated") }
   }
 }
 

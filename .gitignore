@@ -12,3 +12,4 @@
 build
 release
 local.properties
+secrets.properties
