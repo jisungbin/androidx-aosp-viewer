@@ -281,10 +281,10 @@ class AndroidxRepositoryReaderTest {
     """.trimIndent()
 
     assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!"),
-      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!"),
-      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!"),
-      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!"),
+      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
+      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
+      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
+      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
     )
   }
 
@@ -357,12 +357,12 @@ class AndroidxRepositoryReaderTest {
     """.trimIndent()
 
     assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!"),
-      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!"),
+      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
+      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
       GitContent(path = "tracing", url = "url", blob = null),
       GitContent(path = "transition", url = "url", blob = null),
-      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!"),
-      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!"),
+      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
+      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
     )
   }
 

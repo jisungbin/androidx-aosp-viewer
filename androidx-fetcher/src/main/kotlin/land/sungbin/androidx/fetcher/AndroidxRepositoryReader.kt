@@ -23,6 +23,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.coroutines.executeAsync
 import okio.BufferedSource
+import okio.ByteString
 import okio.ByteString.Companion.decodeBase64
 
 public class AndroidxRepositoryReader(
@@ -69,7 +70,7 @@ public class AndroidxRepositoryReader(
       var path: String? = null
       var type: String? = null
       var url: String? = null
-      var blob: (suspend () -> String?)? = null
+      var blob: (suspend () -> ByteString?)? = null
 
       reader.beginObject()
       while (reader.hasNext()) {
@@ -103,7 +104,7 @@ public class AndroidxRepositoryReader(
     contents.awaitAll()
   }
 
-  private suspend fun readBlobContent(url: String): String? {
+  private suspend fun readBlobContent(url: String): ByteString? {
     val request = Request.Builder().url(url).build()
     return client.newCall(request).executeAsync().use { response ->
       if (!response.isSuccessful) {
@@ -140,7 +141,7 @@ public class AndroidxRepositoryReader(
         return null
       }
 
-      content.decodeBase64()!!.utf8()
+      content.decodeBase64()!!
     }
   }
 }

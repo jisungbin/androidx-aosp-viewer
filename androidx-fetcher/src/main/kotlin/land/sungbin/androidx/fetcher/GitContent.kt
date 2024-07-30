@@ -8,12 +8,13 @@
 package land.sungbin.androidx.fetcher
 
 import androidx.compose.runtime.Immutable
+import okio.ByteString
 
 @Immutable
 public data class GitContent(
   public val path: String,
   public val url: String,
-  public val blob: String?,
+  public val blob: ByteString?,
 ) {
   init {
     require(path.isNotEmpty()) { "path should not be empty" }
