@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "GitHub Fetch",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
