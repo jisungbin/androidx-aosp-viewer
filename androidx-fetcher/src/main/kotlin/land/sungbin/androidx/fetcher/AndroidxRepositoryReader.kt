@@ -8,6 +8,7 @@
 package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -31,14 +32,14 @@ public class AndroidxRepositoryReader(
   private val client: OkHttpClient = OkHttpClient(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  public suspend fun read(source: BufferedSource): List<GitContent> {
+  public suspend fun read(source: BufferedSource, parent: ImmutableList<GitContent>? = null): List<GitContent> {
     val snapshotForError = source.buffer.snapshot()
     var root: List<GitContent>? = null
     JsonReader.of(source).use { reader ->
       reader.beginObject()
       while (reader.hasNext()) {
         when (reader.nextName()) {
-          "tree" -> root = readTree(reader)
+          "tree" -> root = readTree(reader, parent)
           "truncated" -> {
             if (reader.nextBoolean()) {
               logger.warn {
@@ -52,7 +53,10 @@ public class AndroidxRepositoryReader(
       }
       reader.endObject()
     }
-    return root ?: run {
+    return root?.sortedWith(
+      compareBy<GitContent> { it.blob != null } // Folders first
+        .thenBy { it.path }, // Alphabetical order
+    ) ?: run {
       logger.error {
         "No tree object found in the repository. " +
           "Please check the given source: ${snapshotForError.utf8()}"
@@ -61,7 +65,7 @@ public class AndroidxRepositoryReader(
     }
   }
 
-  private suspend fun readTree(reader: JsonReader): List<GitContent> = coroutineScope {
+  private suspend fun readTree(reader: JsonReader, parent: ImmutableList<GitContent>?): List<GitContent> = coroutineScope {
     val contentJobs = mutableListOf<Job>()
     val contents = mutableListOf<Deferred<GitContent>>()
 
@@ -94,7 +98,7 @@ public class AndroidxRepositoryReader(
       contentJobs += launch(Dispatchers.Unconfined) {
         if (type == "blob") blob = { readBlobContent(url) }
         contents += async(Dispatchers.Unconfined) {
-          GitContent(path, url, blob?.let { withContext(ioDispatcher) { it() } })
+          GitContent(path, url, blob?.let { withContext(ioDispatcher) { it() } }, parent)
         }
       }
     }

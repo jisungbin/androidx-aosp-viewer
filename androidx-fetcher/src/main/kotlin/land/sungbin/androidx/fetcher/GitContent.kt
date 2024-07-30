@@ -8,6 +8,7 @@
 package land.sungbin.androidx.fetcher
 
 import androidx.compose.runtime.Immutable
+import kotlinx.collections.immutable.ImmutableList
 import okio.ByteString
 
 @Immutable
@@ -15,6 +16,7 @@ public data class GitContent(
   public val path: String,
   public val url: String,
   public val blob: ByteString?,
+  public val parent: ImmutableList<GitContent>? = null,
 ) {
   init {
     require(path.isNotEmpty()) { "path should not be empty" }
