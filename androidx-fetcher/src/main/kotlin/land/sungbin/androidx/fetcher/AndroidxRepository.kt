@@ -27,7 +27,7 @@ public class AndroidxRepository(
   private val logger: Logger = Logger.Default,
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  public suspend fun fetch(): ResponseBody? {
+  public suspend fun fetch(ref: String = "androidx-main"): ResponseBody? {
     var httpLogging: HttpLoggingInterceptor? = null
     var eventLogging: LoggingEventListener.Factory? = null
 
@@ -57,7 +57,8 @@ public class AndroidxRepository(
       .build()
 
     val url = base.newBuilder()
-      .addPathSegments("repos/androidx/androidx/git/trees/androidx-main")
+      .addPathSegments("repos/androidx/androidx/git/trees")
+      .addPathSegment(ref)
       .build()
     val request = Request.Builder()
       .url(url)
