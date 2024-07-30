@@ -14,8 +14,8 @@ kotlin {
     optIn.add("okhttp3.ExperimentalOkHttpApi")
   }
   sourceSets.all {
-    languageSettings.enableLanguageFeature("ExplicitBackingFields")
     languageSettings.enableLanguageFeature("ContextReceivers")
+    languageSettings.enableLanguageFeature("ExplicitBackingFields")
   }
 }
 
