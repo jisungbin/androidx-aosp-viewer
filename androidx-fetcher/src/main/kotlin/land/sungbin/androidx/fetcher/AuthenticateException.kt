@@ -8,15 +8,26 @@
 package land.sungbin.androidx.viewer.exception
 
 import java.io.IOException
+import java.net.HttpURLConnection.HTTP_FORBIDDEN
+import java.net.HttpURLConnection.HTTP_NOT_FOUND
+import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
+import okhttp3.Response
 
-// TODO
-//  unit testing
-//  connection error handling
 public data class AuthenticateException(
   val code: Int,
   override val message: String,
 ) : IOException() {
-  init {
-    require(code in 400..499) { "code must be in 400..499" }
+  internal companion object {
+    fun parseFromGH(response: Response): AuthenticateException? {
+      // https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api?apiVersion=2022-11-28#failed-login-limit
+      if (
+        response.code == HTTP_UNAUTHORIZED ||
+        response.code == HTTP_FORBIDDEN ||
+        response.code == HTTP_NOT_FOUND
+      ) {
+        return AuthenticateException(code = response.code, message = response.message)
+      }
+      return null
+    }
   }
 }

@@ -18,6 +18,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import land.sungbin.androidx.viewer.exception.AuthenticateException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.coroutines.executeAsync
@@ -105,6 +106,12 @@ public class AndroidxRepositoryReader(
   private suspend fun readBlobContent(url: String): String? {
     val request = Request.Builder().url(url).build()
     return client.newCall(request).executeAsync().use { response ->
+      if (!response.isSuccessful) {
+        logger.error { "Failed to fetch the blob: $response" }
+        AuthenticateException.parseFromGH(response)?.let { throw it }
+        return null
+      }
+
       var content: String? = null
       var encoding: String? = null
 

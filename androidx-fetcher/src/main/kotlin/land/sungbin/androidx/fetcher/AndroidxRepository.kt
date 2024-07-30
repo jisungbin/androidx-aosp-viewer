@@ -11,6 +11,7 @@ import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import land.sungbin.androidx.viewer.exception.AuthenticateException
 import okhttp3.Cache
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -67,6 +68,7 @@ public class AndroidxRepository(
 
     if (!response.isSuccessful) {
       logger.error { "Failed to fetch the repository: $response" }
+      AuthenticateException.parseFromGH(response)?.let { throw it }
       return null
     }
 

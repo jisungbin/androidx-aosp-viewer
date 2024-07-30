@@ -7,17 +7,23 @@
 
 package land.sungbin.androidx.fetcher
 
+import assertk.all
+import assertk.assertFailure
 import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.doesNotContain
+import assertk.assertions.hasClass
+import assertk.assertions.hasMessage
 import assertk.assertions.isEmpty
 import java.net.HttpURLConnection.HTTP_BAD_REQUEST
+import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import java.nio.file.Path
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import land.sungbin.androidx.viewer.exception.AuthenticateException
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.QueueDispatcher
@@ -143,6 +149,16 @@ class AndroidxRepositoryTest {
         "message=Client Error, " +
         "url=${server.url("/")}repos/androidx/androidx/git/trees/androidx-main" +
         "}"
+    }
+  }
+
+  @Test fun throws_AuthenticateException_when_receive_400_errors(): Unit = runTest {
+    (server.dispatcher as QueueDispatcher).clear()
+    server.enqueue(MockResponse(code = HTTP_UNAUTHORIZED))
+
+    assertFailure { repo.fetch() }.all {
+      hasClass<AuthenticateException>()
+      hasMessage("Client Error")
     }
   }
 }
