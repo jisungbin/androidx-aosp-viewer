@@ -1,7 +1,14 @@
+/*
+ * Developed by Ji Sungbin 2024.
+ *
+ * Licensed under the MIT.
+ * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
+ */
+
 package land.sungbin.androidx.viewer.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.paddingFromBaseline
@@ -49,8 +56,8 @@ import land.sungbin.androidx.fetcher.GitContent
 ) {
   Text(
     modifier = modifier
-      .padding(vertical = 8.dp, horizontal = 16.dp)
-      .clickable(onClick = onClick),
+      .clickable(onClick = onClick)
+      .padding(vertical = 8.dp, horizontal = 16.dp),
     text = name,
     style = MaterialTheme.typography.titleMedium,
   )
@@ -63,7 +70,7 @@ import land.sungbin.androidx.fetcher.GitContent
 ) {
   val blob = requireNotNull(content.blob) { "blob must not be null" }
 
-  Row(
+  Column(
     modifier = modifier
       .clickable(onClick = onClick)
       .padding(vertical = 8.dp, horizontal = 16.dp),
@@ -71,7 +78,7 @@ import land.sungbin.androidx.fetcher.GitContent
     Text(text = content.path, style = MaterialTheme.typography.titleMedium)
     Text(
       modifier = Modifier.paddingFromBaseline(top = 20.dp),
-      text = "${blob.size / 1_000} KB",
+      text = "%.2f KB".format(blob.size.toFloat() / 1_000),
       style = MaterialTheme.typography.bodySmall,
     )
   }

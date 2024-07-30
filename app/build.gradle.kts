@@ -53,6 +53,16 @@ android {
   }
 }
 
+kotlin {
+  compilerOptions {
+    optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
+  }
+  sourceSets.all {
+    languageSettings.enableLanguageFeature("ContextReceivers")
+    languageSettings.enableLanguageFeature("ExplicitBackingFields")
+  }
+}
+
 composeCompiler {
   enableStrongSkippingMode = true
   enableNonSkippingGroupOptimization = true
