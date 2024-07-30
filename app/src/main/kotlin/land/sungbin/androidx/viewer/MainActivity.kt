@@ -12,11 +12,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -33,17 +30,8 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     setContent {
-      Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-      ) {
-        if (accessToken == null && ghLogin.isLoginNeeded()) {
-          Button(onClick = { ghLogin.login(this@MainActivity) }) {
-            Text("Login with GitHub")
-          }
-        } else if (accessToken != null) {
-          Text("Logged in with GitHub: $accessToken")
-        }
+      Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+
       }
     }
   }
