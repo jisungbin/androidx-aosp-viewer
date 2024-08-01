@@ -17,8 +17,6 @@ import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 
 object GitHubFetchCachingContext {
-  private const val CACHE_PATH = "cache/github_login"
-
   @WorkerThread operator fun invoke(
     @NonUiContext context: Context,
     maxSize: Long,
@@ -28,7 +26,7 @@ object GitHubFetchCachingContext {
 
     val cache = DiskLruCache(
       fileSystem = fs,
-      directory = context.getDir(CACHE_PATH, Context.MODE_PRIVATE).toOkioPath(),
+      directory = context.cacheDir.toOkioPath(),
       appVersion = RemoteCachingContext.CACHE_VERSION,
       valueCount = RemoteCachingContext.ENTRY_SIZE,
       maxSize = maxSize,
