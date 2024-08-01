@@ -29,17 +29,15 @@ import land.sungbin.androidx.viewer.R
   canNavigateBack: Boolean = true,
   modifier: Modifier = Modifier,
   onBackClick: () -> Unit = {},
+  onRefreshClick: () -> Unit = {},
   onCopyClick: () -> Unit = {},
   onSettingClick: () -> Unit = {},
 ) {
-  val currentPath = remember(contents) {
-    contents.firstOrNull()?.parent?.firstOrNull()?.path
+  val currentParentPath = remember(contents) {
+    contents.firstOrNull()?.currentParentPath() ?: "<root>"
   }
-  val wholePaths = remember(contents) {
-    contents.firstOrNull()?.parent?.firstOrNull()
-      ?.wholePaths()
-      ?.asReversed()
-      ?.joinToString("/", prefix = "/")
+  val wholeParentPaths = remember(contents) {
+    contents.firstOrNull()?.wholeParentPaths() ?: "/"
   }
 
   TopAppBar(
@@ -48,12 +46,12 @@ import land.sungbin.androidx.viewer.R
       if (contents.isNotEmpty()) {
         Column {
           Text(
-            text = currentPath ?: "root",
+            text = currentParentPath,
             style = MaterialTheme.typography.titleMedium,
           )
           Text(
             modifier = Modifier.paddingFromBaseline(top = 6.dp),
-            text = wholePaths ?: "/",
+            text = wholeParentPaths,
             style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray),
           )
         }
@@ -78,6 +76,14 @@ import land.sungbin.androidx.viewer.R
           )
         }
       }
+      if (contents.isNotEmpty()) {
+        IconButton(onClick = onRefreshClick) {
+          Icon(
+            painter = painterResource(R.drawable.ic_round_refresh_24),
+            contentDescription = "Refresh",
+          )
+        }
+      }
       IconButton(onClick = onSettingClick) {
         Icon(
           painter = painterResource(R.drawable.ic_round_settings_24),
@@ -86,9 +92,4 @@ import land.sungbin.androidx.viewer.R
       }
     },
   )
-}
-
-private fun GitContent.wholePaths(builder: MutableList<String> = mutableListOf()): List<String> {
-  builder += path
-  return parent?.firstOrNull()?.wholePaths(builder) ?: builder
 }

@@ -5,5 +5,17 @@
   ~ Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
   -->
 <resources>
-    <string name="app_name">AndroidxViewer</string>
+  <string name="app_name">AndroidxViewer</string>
+
+  <string name="preferences_font_size">Font size</string>
+  <string name="preferences_max_cache_size">Max cache size</string>
+  <string name="preferences_cache_size_unit">MB</string>
+  <string name="preferences_cache_disable_hint">Enter 0 to disable the cache.</string>
+  <string name="preferences_gh_login">GitHub login</string>
+  <string name="preferences_gh_logged_in">Last logged in on %s. Click to log out.</string>
+  <string name="preferences_gh_logged_out">Not logged in. Click to log in.</string>
+
+  <string name="gh_cannot_login">Failed to log in. GitHub OAuth ID or secret is null.</string>
+  <string name="gh_fetch_failed">Failed to fetch the content.</string>
+  <string name="gh_fetch_failed_authenticate">Your GitHub authentication has expired, please log in again.</string>
 </resources>

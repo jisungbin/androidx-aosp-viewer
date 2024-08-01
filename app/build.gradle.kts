@@ -22,7 +22,7 @@ android {
   compileSdk = 34
 
   defaultConfig {
-    minSdk = 21
+    minSdk = 23
     targetSdk = 34
 
     buildConfigField("String", "GH_ID", "\"${secrets["gh-id"]}\"")
@@ -72,6 +72,7 @@ dependencies {
   implementation(projects.androidxFetcher)
 
   implementation(libs.androidx.activity)
+  implementation(libs.androidx.datastore)
 
   implementation(libs.compose.activity)
   implementation(libs.compose.material3)
