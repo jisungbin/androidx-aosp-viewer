@@ -10,9 +10,9 @@ package land.sungbin.androidx.viewer
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.annotation.NonUiContext
 import androidx.annotation.UiContext
 import com.squareup.moshi.JsonReader
+import java.text.SimpleDateFormat
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
 import kotlin.random.nextUInt
@@ -26,9 +26,6 @@ import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.BufferedSink
 import okio.BufferedSource
-import okio.FileSystem
-import okio.Path.Companion.toOkioPath
-import okio.Path.Companion.toPath
 import timber.log.Timber
 
 // TODO unit testing?
@@ -45,21 +42,11 @@ class GitHubLogin {
 
   private val loginRequestState = AtomicReference<UInt?>(null)
 
-  fun isLoginNeeded(): Boolean = id != null && secret != null
-
-  // TODO is this good for security? Probably NO.
-  fun writeAccessTokenToStorage(@NonUiContext context: Context, fs: FileSystem, token: String) {
-    val path = context.getDir(AccessTokenDirectory, Context.MODE_PRIVATE).toOkioPath().resolve(AccessTokenPath)
-    fs.write(path) { writeUtf8(token) }
-  }
-
-  fun readAccessTokenFromStorage(@NonUiContext context: Context, fs: FileSystem): String? {
-    val path = context.getDir(AccessTokenDirectory, Context.MODE_PRIVATE).toOkioPath().resolve(AccessTokenPath)
-    if (!fs.exists(path)) return null
-    return fs.read(path) { readUtf8() }
-  }
+  fun canLogin(): Boolean = id != null && secret != null
 
   fun login(@UiContext context: Context) {
+    check(canLogin()) { "GitHub OAuth ID or secret is null" }
+
     loginRequestState.set(Random(System.nanoTime()).nextUInt())
 
     val url = HttpUrl.Builder()
@@ -134,11 +121,11 @@ class GitHubLogin {
   private fun String.orNull(): String? =
     if (isBlank() || this == "null") null else this
 
-  @Suppress("ConstPropertyName")
-  private companion object {
-    val TAG = GitHubLogin::class.simpleName!!
+  companion object {
+    private val TAG = GitHubLogin::class.simpleName!!
+    const val LOGOUT_FLAG = -1L
 
-    const val AccessTokenDirectory = "secrets"
-    val AccessTokenPath = "access_token.secrets".toPath()
+    // `SimpleDateFormat.getDateInstance()` is not singleton instance
+    val LOGIN_DATE_FORMAT = SimpleDateFormat.getDateInstance()
   }
 }
