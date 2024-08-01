@@ -8,6 +8,8 @@
 package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
+import java.io.IOException
+import kotlin.coroutines.coroutineContext
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Deferred
@@ -19,27 +21,34 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import land.sungbin.androidx.viewer.exception.AuthenticateException
+import land.sungbin.androidx.viewer.exception.GitHubAuthenticateException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.coroutines.executeAsync
 import okio.BufferedSource
 import okio.ByteString
 import okio.ByteString.Companion.decodeBase64
+import okio.buffer
 
 public class AndroidxRepositoryReader(
   private val logger: Logger = Logger.Default,
   private val client: OkHttpClient = OkHttpClient(),
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  public suspend fun read(source: BufferedSource, parent: ImmutableList<GitContent>? = null): List<GitContent> {
+  @Throws(IOException::class, GitHubAuthenticateException::class)
+  public suspend fun read(
+    source: BufferedSource,
+    parent: ImmutableList<GitContent>? = null,
+    noCache: Boolean = false,
+  ): List<GitContent> {
     val snapshotForError = source.buffer.snapshot()
     var root: List<GitContent>? = null
+
     JsonReader.of(source).use { reader ->
       reader.beginObject()
       while (reader.hasNext()) {
         when (reader.nextName()) {
-          "tree" -> root = readTree(reader, parent)
+          "tree" -> root = readTree(reader, parent, noCache)
           "truncated" -> {
             if (reader.nextBoolean()) {
               logger.warn {
@@ -53,8 +62,9 @@ public class AndroidxRepositoryReader(
       }
       reader.endObject()
     }
+
     return root?.sortedWith(
-      compareBy<GitContent> { it.blob != null } // Folders first
+      compareBy<GitContent> { it.blob == null } // Folders first
         .thenBy { it.path }, // Alphabetical order
     ) ?: run {
       logger.error {
@@ -65,7 +75,12 @@ public class AndroidxRepositoryReader(
     }
   }
 
-  private suspend fun readTree(reader: JsonReader, parent: ImmutableList<GitContent>?): List<GitContent> = coroutineScope {
+  @Throws(IOException::class, GitHubAuthenticateException::class)
+  private suspend fun readTree(
+    reader: JsonReader,
+    parent: ImmutableList<GitContent>?,
+    noCache: Boolean,
+  ): List<GitContent> = coroutineScope {
     val contentJobs = mutableListOf<Job>()
     val contents = mutableListOf<Deferred<GitContent>>()
 
@@ -96,7 +111,7 @@ public class AndroidxRepositoryReader(
       }
 
       contentJobs += launch(Dispatchers.Unconfined) {
-        if (type == "blob") blob = { readBlobContent(url) }
+        if (type == "blob") blob = { readBlobContent(url, noCache) }
         contents += async(Dispatchers.Unconfined) {
           GitContent(path, url, blob?.let { withContext(ioDispatcher) { it() } }, parent)
         }
@@ -108,19 +123,30 @@ public class AndroidxRepositoryReader(
     contents.awaitAll()
   }
 
-  private suspend fun readBlobContent(url: String): ByteString? {
+  @Throws(IOException::class, GitHubAuthenticateException::class)
+  private suspend fun readBlobContent(url: String, noCache: Boolean): ByteString {
+    val cache = coroutineContext[RemoteCachingContext]?.takeUnless { noCache }?.takeIf { it.enabled }
     val request = Request.Builder().url(url).build()
+
+    val candidateCache = cache?.getCachedSource(url)
+    if (candidateCache != null) return candidateCache.buffer().use { it.readByteString() }
+
     return client.newCall(request).executeAsync().use { response ->
       if (!response.isSuccessful) {
         logger.error { "Failed to fetch the blob: $response" }
-        AuthenticateException.parseFromGH(response)?.let { throw it }
-        return null
+        GitHubAuthenticateException.parse(response)?.let { throw it }
+        throw IOException(response.message)
+      }
+
+      val source = response.body.source()
+      if (cache?.putSource(url, source) == false) {
+        logger.error { "Failed to cache the blob: $url" }
       }
 
       var content: String? = null
       var encoding: String? = null
 
-      JsonReader.of(response.body.source()).use { reader ->
+      JsonReader.of(source).use { reader ->
         reader.beginObject()
         while (reader.hasNext()) {
           when (reader.nextName()) {
@@ -137,12 +163,12 @@ public class AndroidxRepositoryReader(
           "Required fields are missing in the blob object. " +
             "(content: $content, encoding: $encoding)"
         }
-        return null
+        error("Required fields are missing in the blob object.")
       }
 
       if (encoding != "base64") {
         logger.warn { "Unsupported encoding: $encoding" }
-        return null
+        error("The encoding of the blob is wrong.")
       }
 
       content.decodeBase64()!!

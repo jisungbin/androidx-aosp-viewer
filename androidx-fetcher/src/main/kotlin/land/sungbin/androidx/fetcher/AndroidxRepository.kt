@@ -7,53 +7,48 @@
 
 package land.sungbin.androidx.fetcher
 
+import java.io.IOException
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import land.sungbin.androidx.viewer.exception.AuthenticateException
-import okhttp3.Cache
+import land.sungbin.androidx.viewer.exception.GitHubAuthenticateException
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.ResponseBody
 import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
-import okhttp3.logging.LoggingEventListener
+import okio.BufferedSource
+import okio.buffer
 
 public class AndroidxRepository(
   private val base: HttpUrl = "https://api.github.com".toHttpUrl(),
   private val logger: Logger = Logger.Default,
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  public suspend fun fetch(ref: String = "androidx-main"): ResponseBody? {
+  @Throws(IOException::class, GitHubAuthenticateException::class)
+  public suspend fun fetch(ref: String = HOME_REF, noCache: Boolean = false): BufferedSource {
+    val cache = coroutineContext[RemoteCachingContext]?.takeUnless { noCache }?.takeIf { it.enabled }
+
+    val candidateCache = cache?.getCachedSource(ref)
+    if (candidateCache != null) return candidateCache.buffer()
+
     var httpLogging: HttpLoggingInterceptor? = null
-    var eventLogging: LoggingEventListener.Factory? = null
 
     coroutineContext[RemoteLoggingContext]?.let { loggingContext ->
-      if (loggingContext.httpLogging > HttpLoggingInterceptor.Level.NONE) {
+      if (loggingContext.level > HttpLoggingInterceptor.Level.NONE) {
         httpLogging = HttpLoggingInterceptor { message ->
           logger.debug { message }
         }
-          .apply { level = loggingContext.httpLogging }
-      }
-      if (loggingContext.eventLogging) {
-        eventLogging = LoggingEventListener.Factory { message ->
-          logger.debug { message }
-        }
+          .apply { level = loggingContext.level }
       }
     }
 
-    val cache = coroutineContext[RemoteCachingContext]?.let { cachingContext ->
-      Cache(cachingContext.fs, cachingContext.directory, cachingContext.maxSize)
-    }
     val token = coroutineContext[GitHubAuthorizationContext]?.token
 
     val client = OkHttpClient.Builder()
-      .cache(cache)
       .apply { httpLogging?.let(::addInterceptor) }
-      .apply { eventLogging?.let(::eventListenerFactory) }
       .build()
 
     val url = base.newBuilder()
@@ -69,10 +64,18 @@ public class AndroidxRepository(
 
     if (!response.isSuccessful) {
       logger.error { "Failed to fetch the repository: $response" }
-      AuthenticateException.parseFromGH(response)?.let { throw it }
-      return null
+      GitHubAuthenticateException.parse(response)?.let { throw it }
+      throw IOException(response.message)
     }
 
-    return response.body
+    return response.body.source().also { source ->
+      if (cache?.putSource(ref, source) == false) {
+        logger.error { "Failed to cache the repository: $ref" }
+      }
+    }
+  }
+
+  public companion object {
+    public const val HOME_REF: String = "androidx-main"
   }
 }

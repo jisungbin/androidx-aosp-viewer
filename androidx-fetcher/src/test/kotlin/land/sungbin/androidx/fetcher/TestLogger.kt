@@ -7,10 +7,6 @@
 
 package land.sungbin.androidx.fetcher
 
-import assertk.assertAll
-import assertk.assertThat
-import assertk.assertions.isEmpty
-
 class TestLogger : Logger() {
   val debugs: List<String>
     field = mutableListOf()
@@ -33,36 +29,9 @@ class TestLogger : Logger() {
     errors += lazyMessage()
   }
 
-  fun assert(
-    mustAssertAll: Boolean = true,
-    asserter: context(TestLogger)
-    Asserter.() -> Unit,
-  ) {
-    asserter.invoke(this, TestLoggerAsserter())
-    if (mustAssertAll) assertAll {
-      assertThat(debugs, "debugs").isEmpty()
-      assertThat(warns, "warns").isEmpty()
-      assertThat(errors, "errors").isEmpty()
-    }
-  }
-
-  @Suppress("TestFunctionName")
-  private fun TestLoggerAsserter() = object : Asserter {
-    override fun List<String>.has(text: String) {
-      if (!(this as MutableList<String>).removeIf { it == text }) {
-        throw AssertionError("Expected to find $text in $this")
-      }
-    }
-
-    override fun List<String>.hasNot(text: String) {
-      if (contains(text)) {
-        throw AssertionError("Expected not to find $text in $this")
-      }
-    }
-  }
-
-  @TestDsl interface Asserter {
-    infix fun List<String>.has(text: String)
-    infix fun List<String>.hasNot(text: String)
+  fun clear() {
+    debugs.clear()
+    warns.clear()
+    errors.clear()
   }
 }

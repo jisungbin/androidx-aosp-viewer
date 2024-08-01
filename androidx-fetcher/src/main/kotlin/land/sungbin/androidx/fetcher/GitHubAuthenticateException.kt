@@ -13,19 +13,19 @@ import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import okhttp3.Response
 
-public data class AuthenticateException(
+public data class GitHubAuthenticateException(
   val code: Int,
   override val message: String,
 ) : IOException() {
   internal companion object {
-    fun parseFromGH(response: Response): AuthenticateException? {
+    fun parse(response: Response): GitHubAuthenticateException? {
       // https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api?apiVersion=2022-11-28#failed-login-limit
       if (
         response.code == HTTP_UNAUTHORIZED ||
         response.code == HTTP_FORBIDDEN ||
         response.code == HTTP_NOT_FOUND
       ) {
-        return AuthenticateException(code = response.code, message = response.message)
+        return GitHubAuthenticateException(response.code, response.message)
       }
       return null
     }

@@ -10,8 +10,4 @@ package land.sungbin.androidx.viewer.utils
 import land.sungbin.androidx.fetcher.RemoteLoggingContext
 import okhttp3.logging.HttpLoggingInterceptor
 
-val GitHubFetchLoggingContext =
-  RemoteLoggingContext(
-    httpLogging = HttpLoggingInterceptor.Level.BODY,
-    eventLogging = false,
-  )
+val GitHubFetchLoggingContext = RemoteLoggingContext(level = HttpLoggingInterceptor.Level.BODY)

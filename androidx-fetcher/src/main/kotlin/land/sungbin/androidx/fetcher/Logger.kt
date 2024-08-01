@@ -12,22 +12,28 @@ import java.util.logging.Logger as JavaLogger
 
 // Timber is an Android library, so we can't use it.
 public open class Logger {
-  private val logger by lazy {
+  protected open val logger: JavaLogger by lazy {
     JavaLogger.getLogger(Logger::class.qualifiedName!!).apply {
       level = Level.ALL
     }
   }
 
   public open fun debug(lazyMessage: () -> String) {
-    logger.info(lazyMessage)
+    if (logger.isLoggable(Level.INFO)) {
+      logger.info(lazyMessage())
+    }
   }
 
   public open fun warn(lazyMessage: () -> String) {
-    logger.warning(lazyMessage)
+    if (logger.isLoggable(Level.WARNING)) {
+      logger.warning(lazyMessage())
+    }
   }
 
   public open fun error(lazyMessage: () -> String) {
-    logger.severe(lazyMessage)
+    if (logger.isLoggable(Level.SEVERE)) {
+      logger.severe(lazyMessage())
+    }
   }
 
   public companion object Default : Logger() {

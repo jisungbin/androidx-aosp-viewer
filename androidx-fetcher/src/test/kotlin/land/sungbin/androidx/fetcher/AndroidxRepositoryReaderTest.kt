@@ -7,9 +7,13 @@
 
 package land.sungbin.androidx.fetcher
 
+import assertk.assertFailure
 import assertk.assertThat
+import assertk.assertions.contains
 import assertk.assertions.containsExactly
+import assertk.assertions.hasMessage
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -26,12 +30,17 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(MockWebServerExtension::class)
 class AndroidxRepositoryReaderTest {
-  private lateinit var logger: TestLogger
-  private lateinit var reader: AndroidxRepositoryReader
+  private lateinit var server: MockWebServer
 
-  @BeforeTest fun prepare() {
-    logger = TestLogger()
-    reader = AndroidxRepositoryReader(logger, ioDispatcher = UnconfinedTestDispatcher())
+  private val logger = TestLogger()
+  private val reader = AndroidxRepositoryReader(logger, ioDispatcher = UnconfinedTestDispatcher())
+
+  @BeforeTest fun prepare(server: MockWebServer) {
+    this.server = server
+  }
+
+  @AfterTest fun cleanup() {
+    logger.clear()
   }
 
   @Test fun truncatedTreeMakesWarning(): Unit = runTest {
@@ -54,10 +63,10 @@ class AndroidxRepositoryReaderTest {
 
     reader.read(Buffer().apply { writeUtf8(source) })
 
-    logger.assert {
-      warns has "The repository has too many files to read. " +
-        "Some files may not be included in the list."
-    }
+    assertThat(logger.warns).contains(
+      "The repository has too many files to read. " +
+        "Some files may not be included in the list.",
+    )
   }
 
   @Test fun noRootTreeMakesError(): Unit = runTest {
@@ -71,10 +80,10 @@ class AndroidxRepositoryReaderTest {
 
     reader.read(Buffer().apply { writeUtf8(source) })
 
-    logger.assert {
-      errors has "No tree object found in the repository. " +
-        "Please check the given source: $source"
-    }
+    assertThat(logger.errors).contains(
+      "No tree object found in the repository. " +
+        "Please check the given source: $source",
+    )
   }
 
   @Test fun incompleteTreeMakesWarning(): Unit = runTest {
@@ -95,13 +104,13 @@ class AndroidxRepositoryReaderTest {
 
     reader.read(Buffer().apply { writeUtf8(source) })
 
-    logger.assert {
-      warns has "Required fields are missing in the tree object. " +
-        "(path: tracing, type: null, url: null)"
-    }
+    assertThat(logger.warns).contains(
+      "Required fields are missing in the tree object. " +
+        "(path: tracing, type: null, url: null)",
+    )
   }
 
-  @Test fun incompleteBlobMakesWarning(server: MockWebServer): Unit = runTest {
+  @Test fun incompleteBlobMakesException(): Unit = runTest {
     val blobUrl = server.url("blob.txt")
 
     server.dispatcher = object : Dispatcher() {
@@ -136,15 +145,16 @@ class AndroidxRepositoryReaderTest {
       }
     """.trimIndent()
 
-    reader.read(Buffer().apply { writeUtf8(source) })
+    assertFailure { reader.read(Buffer().apply { writeUtf8(source) }) }
+      .hasMessage("Required fields are missing in the blob object.")
 
-    logger.assert {
-      warns has "Required fields are missing in the blob object. " +
-        "(content: null, encoding: base64)"
-    }
+    assertThat(logger.warns).contains(
+      "Required fields are missing in the blob object. " +
+        "(content: null, encoding: base64)",
+    )
   }
 
-  @Test fun unsupportedBlobMakesWarning(server: MockWebServer): Unit = runTest {
+  @Test fun unsupportedBlobMakesException(): Unit = runTest {
     val blobUrl = server.url("blob.txt")
 
     server.dispatcher = object : Dispatcher() {
@@ -180,11 +190,10 @@ class AndroidxRepositoryReaderTest {
       }
     """.trimIndent()
 
-    reader.read(Buffer().apply { writeUtf8(source) })
+    assertFailure { reader.read(Buffer().apply { writeUtf8(source) }) }
+      .hasMessage("The encoding of the blob is wrong.")
 
-    logger.assert {
-      warns has "Unsupported encoding: utf8"
-    }
+    assertThat(logger.warns).contains("Unsupported encoding: utf8")
   }
 
   @Test fun gitTreeParsedWithTrees(): Unit = runTest {
@@ -226,7 +235,7 @@ class AndroidxRepositoryReaderTest {
     )
   }
 
-  @Test fun gitTreeParsedWithBlobsInOrder(server: MockWebServer): Unit = runTest {
+  @Test fun gitTreeParsedWithBlobsInSortedOrder(): Unit = runTest {
     val helloBlobUrl = server.url("blob/hello.txt")
     val worldBlobUrl = server.url("blob/world.txt")
     val byeBlobUrl = server.url("blob/bye.txt")
@@ -281,14 +290,14 @@ class AndroidxRepositoryReaderTest {
     """.trimIndent()
 
     assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
-      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
       GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
       GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
+      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
+      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
     )
   }
 
-  @Test fun gitTreeParsedWithMixedInOrder(server: MockWebServer): Unit = runTest {
+  @Test fun gitTreeParsedWithMixedInSortedOrder(): Unit = runTest {
     val helloBlobUrl = server.url("blob/hello.txt")
     val worldBlobUrl = server.url("blob/world.txt")
     val byeBlobUrl = server.url("blob/bye.txt")
@@ -357,12 +366,12 @@ class AndroidxRepositoryReaderTest {
     """.trimIndent()
 
     assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
+      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
+      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
       GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
       GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
       GitContent(path = "tracing", url = "url", blob = null),
       GitContent(path = "transition", url = "url", blob = null),
-      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
-      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
     )
   }
 
