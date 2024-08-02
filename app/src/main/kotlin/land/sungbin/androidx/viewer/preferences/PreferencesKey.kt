@@ -24,7 +24,7 @@ sealed class PreferencesKey<T>(val key: Preferences.Key<T>) {
       private infix fun <T> Preferences.Key<T>.defaults(value: T) = WithDefault(this, value)
 
       val fontSize = intPreferencesKey("font_size") defaults 13
-      val maxCacheSize = longPreferencesKey("max_cache_size") defaults 50_000_000 // 50 MB
+      val maxCacheSize = longPreferencesKey("max_cache_size") defaults 5 // MB unit
     }
   }
 }

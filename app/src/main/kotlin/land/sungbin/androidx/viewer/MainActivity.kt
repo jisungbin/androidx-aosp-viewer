@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
 
           ghCachingContext = GitHubFetchCachingContext(
             context = applicationContext,
-            maxSize = maxCacheSize ?: PreferencesKey.WithDefault.maxCacheSize.default,
+            maxSizeInMB = maxCacheSize ?: PreferencesKey.WithDefault.maxCacheSize.default,
           )
           ghTokenContext = GitHubAuthorizationContext(ghToken)
         }

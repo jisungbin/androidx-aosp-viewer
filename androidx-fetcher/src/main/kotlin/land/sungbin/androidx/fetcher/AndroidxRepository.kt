@@ -28,10 +28,10 @@ public class AndroidxRepository(
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  public suspend fun fetch(ref: String = HOME_REF, noCache: Boolean = false): BufferedSource {
+  public suspend fun fetch(ref: String = HOME_REF, cacheRef: String = ref, noCache: Boolean = false): BufferedSource {
     val cache = coroutineContext[RemoteCachingContext]?.takeUnless { noCache }?.takeIf { it.enabled }
 
-    val candidateCache = cache?.getCachedSource(ref)
+    val candidateCache = cache?.getCachedSource(cacheRef)
     if (candidateCache != null) return candidateCache.buffer()
 
     var httpLogging: HttpLoggingInterceptor? = null
@@ -69,7 +69,7 @@ public class AndroidxRepository(
     }
 
     return response.body.source().also { source ->
-      if (cache?.putSource(ref, source) == false) {
+      if (cache?.putSource(cacheRef, source.buffer.snapshot()) == false) {
         logger.error { "Failed to cache the repository: $ref" }
       }
     }

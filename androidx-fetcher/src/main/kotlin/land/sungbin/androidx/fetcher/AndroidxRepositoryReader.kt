@@ -126,9 +126,11 @@ public class AndroidxRepositoryReader(
   @Throws(IOException::class, GitHubAuthenticateException::class)
   private suspend fun readBlobContent(url: String, noCache: Boolean): ByteString {
     val cache = coroutineContext[RemoteCachingContext]?.takeUnless { noCache }?.takeIf { it.enabled }
+    val cacheRef = url.substringAfterLast('/')
+
     val request = Request.Builder().url(url).build()
 
-    val candidateCache = cache?.getCachedSource(url)
+    val candidateCache = cache?.getCachedSource(cacheRef)
     if (candidateCache != null) return candidateCache.buffer().use { it.readByteString() }
 
     return client.newCall(request).executeAsync().use { response ->
@@ -139,7 +141,7 @@ public class AndroidxRepositoryReader(
       }
 
       val source = response.body.source()
-      if (cache?.putSource(url, source) == false) {
+      if (cache?.putSource(cacheRef, source.buffer.snapshot()) == false) {
         logger.error { "Failed to cache the blob: $url" }
       }
 

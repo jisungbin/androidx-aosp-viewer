@@ -19,17 +19,17 @@ import okio.Path.Companion.toOkioPath
 object GitHubFetchCachingContext {
   @WorkerThread operator fun invoke(
     @NonUiContext context: Context,
-    maxSize: Long,
+    maxSizeInMB: Long,
     fs: FileSystem = FileSystem.SYSTEM,
   ): RemoteCachingContext? {
-    if (maxSize == 0L) return null
+    if (maxSizeInMB == 0L) return null
 
     val cache = DiskLruCache(
       fileSystem = fs,
       directory = context.cacheDir.toOkioPath(),
       appVersion = RemoteCachingContext.CACHE_VERSION,
       valueCount = RemoteCachingContext.ENTRY_SIZE,
-      maxSize = maxSize,
+      maxSize = maxSizeInMB * 1_000_000, // MB to BYTE
       taskRunner = RemoteCachingRunner(),
     )
       .also { it.initialize() }

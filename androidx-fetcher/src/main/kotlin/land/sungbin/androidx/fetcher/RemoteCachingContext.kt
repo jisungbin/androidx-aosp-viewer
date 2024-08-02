@@ -11,6 +11,7 @@ import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 import okhttp3.internal.cache.DiskLruCache
 import okio.Buffer
+import okio.ByteString
 import okio.Source
 import okio.buffer
 import org.jetbrains.annotations.VisibleForTesting
@@ -43,12 +44,12 @@ public data class RemoteCachingContext(
     return null
   }
 
-  internal fun putSource(ref: String, source: Source): Boolean {
+  internal fun putSource(ref: String, source: ByteString): Boolean {
     val cache = checkNotNull(cache) { "Cache is null." }
     var editor: DiskLruCache.Editor? = null
     return try {
       editor = cache.edit(ref) ?: return false
-      editor.newSink(ENTRY_BODY).buffer().use { it.writeAll(source) }
+      editor.newSink(ENTRY_BODY).buffer().use { it.write(source) }
       editor.commit()
       true
     } catch (_: IOException) {

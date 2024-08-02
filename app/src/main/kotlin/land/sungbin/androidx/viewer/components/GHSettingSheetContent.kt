@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.paddingFromBaseline
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -78,7 +79,7 @@ private val notNumberRegex = Regex("\\D")
     onDispose {
       ioScope.launch {
         dataStore.edit { preferences ->
-          preferences[PreferencesKey.WithDefault.maxCacheSize.key] = maxCacheSize * 1_000_000 // MB to BYTE
+          preferences[PreferencesKey.WithDefault.maxCacheSize.key] = maxCacheSize.coerceAtLeast(0L)
 
           // - The ghLoginDate data is managed separately.
           // - The fontSize data is saved immediately because it needs to be applied in real-time.
@@ -135,17 +136,24 @@ private val notNumberRegex = Regex("\\D")
     }
     Row(
       modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(stringResource(R.string.preferences_max_cache_size), style = MaterialTheme.typography.bodyMedium)
+      Column {
+        Text(stringResource(R.string.preferences_max_cache_size), style = MaterialTheme.typography.bodyMedium)
+        Text(
+          modifier = Modifier.paddingFromBaseline(top = 15.dp),
+          text = stringResource(R.string.preferences_cache_disable_hint),
+          style = MaterialTheme.typography.labelSmall,
+        )
+      }
+      // TODO number formatting visualTransformation
       OutlinedTextField(
-        modifier = Modifier.fillMaxWidth(0.3f),
-        value = maxCacheSize.toString(),
-        onValueChange = { maxCacheSize = it.replace(notNumberRegex, "").toLong() },
+        modifier = Modifier.fillMaxWidth(0.7f),
+        value = maxCacheSize.coerceAtLeast(0L).toString(),
+        onValueChange = { maxCacheSize = it.replace(notNumberRegex, "").toLongOrNull() ?: -1 },
         textStyle = MaterialTheme.typography.bodyMedium,
         suffix = { Text(" " + stringResource(R.string.preferences_cache_size_unit)) },
-        supportingText = { Text(stringResource(R.string.preferences_cache_disable_hint)) },
         keyboardOptions = remember {
           KeyboardOptions(
             keyboardType = KeyboardType.Number,
@@ -158,7 +166,9 @@ private val notNumberRegex = Regex("\\D")
     Column(modifier = Modifier.fillMaxWidth()) {
       Text(stringResource(R.string.preferences_gh_login), style = MaterialTheme.typography.bodyMedium)
       Button(
-        modifier = Modifier.padding(top = 8.dp),
+        modifier = Modifier
+          .padding(top = 10.dp)
+          .fillMaxWidth(),
         onClick = onLoginToggleClick,
       ) {
         Text(
