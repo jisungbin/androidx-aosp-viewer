@@ -8,7 +8,7 @@ kotlin-immutableCollections = "0.3.8"
 androidx-activity = "1.9.1"
 androidx-datastore = "1.1.1"
 
-compose-material3 = "1.3.0-beta05"
+compose-material3 = "1.3.1"
 compose-activity = "1.9.1"
 compose-stableMarker = "1.0.5"
 
