@@ -14,7 +14,7 @@ compose-stableMarker = "1.0.5"
 
 okio = "3.9.1"
 okhttp = "5.0.0-alpha.14"
-moshi = "1.15.1"
+moshi = "1.15.2"
 
 timber = "5.0.1"
 
