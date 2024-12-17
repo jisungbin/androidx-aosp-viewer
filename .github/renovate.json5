@@ -1,31 +1,29 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    ":timezone(Asia/Seoul)",
-    "config:base",
-    "schedule:daily",
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    ':timezone(Asia/Seoul)',
+    'config:recommended',
+    'schedule:daily',
   ],
-  "packageRules": [
+  packageRules: [
     {
-      "groupName": "Kotlin and KSP",
-      "groupSlug": "kotlin",
-      "matchPackagePrefixes": [
-        "com.google.devtools.ksp",
-      ],
-      "matchPackagePatterns": [
-        "org.jetbrains.kotlin.*",
+      groupName: 'Kotlin and KSP',
+      groupSlug: 'kotlin',
+      matchPackageNames: [
+        'com.google.devtools.ksp{/,}**',
+        '/org.jetbrains.kotlin.*/',
       ],
     },
     {
-      "description": "Automatically merge minor and patch-level updates",
-      "matchUpdateTypes": [
-        "minor",
-        "patch",
-        "digest",
+      description: 'Automatically merge minor and patch-level updates',
+      matchUpdateTypes: [
+        'minor',
+        'patch',
+        'digest',
       ],
-      "automerge": true,
-      "automergeStrategy": "rebase",
-      "platformAutomerge": true,
+      automerge: true,
+      automergeStrategy: 'rebase',
+      platformAutomerge: true,
     },
   ],
 }
