@@ -5,7 +5,7 @@ kotlin-core = "2.0.0"
 kotlin-coroutines = "1.9.0" # K2
 kotlin-immutableCollections = "0.3.8"
 
-androidx-activity = "1.9.1"
+androidx-activity = "1.9.3"
 androidx-datastore = "1.1.1"
 
 compose-material3 = "1.3.1"
