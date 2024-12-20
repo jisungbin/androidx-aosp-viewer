@@ -1,10 +1,5 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
-
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
@@ -21,7 +16,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import land.sungbin.androidx.viewer.exception.GitHubAuthenticateException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.coroutines.executeAsync
@@ -33,7 +27,7 @@ import okio.buffer
 public class AndroidxRepositoryReader(
   private val logger: Logger = Logger.Default,
   private val client: OkHttpClient = OkHttpClient(),
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
   @Throws(IOException::class, GitHubAuthenticateException::class)
   public suspend fun read(
@@ -113,7 +107,7 @@ public class AndroidxRepositoryReader(
       contentJobs += launch(Dispatchers.Unconfined) {
         if (type == "blob") blob = { readBlobContent(url, noCache) }
         contents += async(Dispatchers.Unconfined) {
-          GitContent(path, url, blob?.let { withContext(ioDispatcher) { it() } }, parent)
+          GitContent(path, url, blob?.let { withContext(dispatcher) { it() } }, parent)
         }
       }
     }
@@ -160,12 +154,12 @@ public class AndroidxRepositoryReader(
         reader.endObject()
       }
 
-      if (content == null || encoding == null) {
+      if (content == null) {
         logger.warn {
-          "Required fields are missing in the blob object. " +
-            "(content: $content, encoding: $encoding)"
+          "The content of the blob is missing. " +
+            "Please check the given source: ${source.buffer.snapshot().utf8()}"
         }
-        error("Required fields are missing in the blob object.")
+        error("The content of the blob is missing.")
       }
 
       if (encoding != "base64") {

@@ -1,22 +1,9 @@
-/*
- * Copyright (C) 2019 Square, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 @file:Suppress("WRONG_NULLABILITY_FOR_JAVA_OVERRIDE", "NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS", "unused")
 
-// This source code copied from https://github.com/square/okhttp/blob/3830bbe8a0387612c91c95c981275305d5abf5cb/okhttp-testing-support/src/main/kotlin/okhttp3/internal/concurrent/TaskFaker.kt
+// This code copied from https://github.com/square/okhttp/blob/3830bbe8a0387612c91c95c981275305d5abf5cb/okhttp-testing-support/src/main/kotlin/okhttp3/internal/concurrent/TaskFaker.kt
+// Original license: Apache-2.0 @ 2019 Square, Inc.
 
 package land.sungbin.androidx.fetcher.thirdparty
 

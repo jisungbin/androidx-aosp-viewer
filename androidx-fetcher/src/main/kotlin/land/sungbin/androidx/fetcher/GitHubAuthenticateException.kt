@@ -1,11 +1,6 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
-
-package land.sungbin.androidx.viewer.exception
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
+package land.sungbin.androidx.fetcher
 
 import java.io.IOException
 import java.net.HttpURLConnection.HTTP_FORBIDDEN

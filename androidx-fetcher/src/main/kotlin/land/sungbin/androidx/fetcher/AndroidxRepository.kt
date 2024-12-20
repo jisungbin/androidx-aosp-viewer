@@ -1,10 +1,5 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
-
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
 import java.io.IOException
@@ -12,7 +7,6 @@ import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import land.sungbin.androidx.viewer.exception.GitHubAuthenticateException
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -25,7 +19,7 @@ import okio.buffer
 public class AndroidxRepository(
   private val base: HttpUrl = "https://api.github.com".toHttpUrl(),
   private val logger: Logger = Logger.Default,
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
   @Throws(IOException::class, GitHubAuthenticateException::class)
   public suspend fun fetch(ref: String = HOME_REF, cacheRef: String = ref, noCache: Boolean = false): BufferedSource {
@@ -60,7 +54,7 @@ public class AndroidxRepository(
       .addHeader("X-GitHub-Api-Version", "2022-11-28")
       .apply { if (token != null) addHeader("Authorization", "Bearer $token") }
       .build()
-    val response = withContext(ioDispatcher) { client.newCall(request).executeAsync() }
+    val response = withContext(dispatcher) { client.newCall(request).executeAsync() }
 
     if (!response.isSuccessful) {
       logger.error { "Failed to fetch the repository: $response" }

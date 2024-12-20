@@ -1,10 +1,5 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
-
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
 import assertk.assertFailure
@@ -21,6 +16,7 @@ import kotlin.test.Test
 import land.sungbin.androidx.fetcher.thirdparty.TaskFaker
 import okhttp3.internal.cache.DiskLruCache
 import okio.Buffer
+import okio.ByteString
 import okio.Path.Companion.toOkioPath
 import okio.buffer
 import okio.fakefilesystem.FakeFileSystem
@@ -69,7 +65,7 @@ class RemoteCachingContextTest {
     assertFailure { RemoteCachingContext(null, false).getCachedSource("") }
       .hasMessage("Cache is null.")
 
-    assertFailure { RemoteCachingContext(null, false).putSource("", Buffer()) }
+    assertFailure { RemoteCachingContext(null, false).putSource("", ByteString.EMPTY) }
       .hasMessage("Cache is null.")
   }
 
@@ -79,7 +75,7 @@ class RemoteCachingContextTest {
 
   @Test fun cachedRefReturnsFilledSource() {
     val testSource = Buffer().writeUtf8("Hello, World!")
-    val putResult = cachingContext.putSource(AndroidxRepository.HOME_REF, testSource)
+    val putResult = cachingContext.putSource(AndroidxRepository.HOME_REF, testSource.readByteString())
 
     assertThat(putResult, name = "putResult").isTrue()
     assertThat(cachingContext.getCachedSource(AndroidxRepository.HOME_REF))

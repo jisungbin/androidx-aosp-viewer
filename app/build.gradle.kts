@@ -1,10 +1,7 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 import java.util.Properties
+import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 
 plugins {
   id("com.android.application")
@@ -19,11 +16,11 @@ val secrets = Properties().apply {
 
 android {
   namespace = "land.sungbin.androidx.viewer"
-  compileSdk = 34
+  compileSdk = 35
 
   defaultConfig {
     minSdk = 23
-    targetSdk = 34
+    targetSdk = 35
 
     buildConfigField("String", "GH_ID", "\"${secrets["gh-id"]}\"")
     buildConfigField("String", "GH_SECRET", "\"${secrets["gh-secret"]}\"")
@@ -34,8 +31,8 @@ android {
   }
 
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.toVersion(libs.versions.jdk.get().toInt())
+    targetCompatibility = JavaVersion.toVersion(libs.versions.jdk.get().toInt())
   }
 
   sourceSets {
@@ -47,25 +44,23 @@ android {
       excludes.add("**/*.kotlin_builtins")
     }
   }
-
-  lint {
-    disable += "ModifierParameter"
-  }
 }
 
 kotlin {
+  jvmToolchain(libs.versions.jdk.get().toInt())
   compilerOptions {
     optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
   }
   sourceSets.all {
-    languageSettings.enableLanguageFeature("ContextReceivers")
     languageSettings.enableLanguageFeature("ExplicitBackingFields")
   }
 }
 
 composeCompiler {
-  enableStrongSkippingMode = true
-  enableNonSkippingGroupOptimization = true
+  featureFlags = setOf(
+    ComposeFeatureFlag.OptimizeNonSkippingGroups,
+    ComposeFeatureFlag.PausableComposition,
+  )
 }
 
 dependencies {
@@ -81,9 +76,9 @@ dependencies {
   implementation(libs.kotlin.immutableCollections)
 
   implementation(platform(libs.okhttp.bom))
-  implementation("com.squareup.okhttp3:okhttp")
-  implementation("com.squareup.okhttp3:okhttp-coroutines")
-  implementation("com.squareup.okhttp3:logging-interceptor")
+  implementation(libs.okhttp.core)
+  implementation(libs.okhttp.coroutines)
+  implementation(libs.okhttp.logging)
   implementation(libs.okio)
   implementation(libs.moshi)
 

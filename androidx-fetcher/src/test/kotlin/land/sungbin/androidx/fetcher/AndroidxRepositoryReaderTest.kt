@@ -1,10 +1,5 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
-
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
 import assertk.assertFailure
@@ -33,7 +28,7 @@ class AndroidxRepositoryReaderTest {
   private lateinit var server: MockWebServer
 
   private val logger = TestLogger()
-  private val reader = AndroidxRepositoryReader(logger, ioDispatcher = UnconfinedTestDispatcher())
+  private val reader = AndroidxRepositoryReader(logger, dispatcher = UnconfinedTestDispatcher())
 
   @BeforeTest fun prepare(server: MockWebServer) {
     this.server = server
@@ -146,12 +141,9 @@ class AndroidxRepositoryReaderTest {
     """.trimIndent()
 
     assertFailure { reader.read(Buffer().apply { writeUtf8(source) }) }
-      .hasMessage("Required fields are missing in the blob object.")
+      .hasMessage("The content of the blob is missing.")
 
-    assertThat(logger.warns).contains(
-      "Required fields are missing in the blob object. " +
-        "(content: null, encoding: base64)",
-    )
+    assertThat(logger.warns).contains("The content of the blob is missing. Please check the given source: ")
   }
 
   @Test fun unsupportedBlobMakesException(): Unit = runTest {

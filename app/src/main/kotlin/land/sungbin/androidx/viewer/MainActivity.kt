@@ -1,10 +1,5 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
-
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.viewer
 
 import android.content.ClipData
@@ -58,7 +53,7 @@ import land.sungbin.androidx.viewer.components.GHContentTopBar
 import land.sungbin.androidx.viewer.components.GHContentTreeScreen
 import land.sungbin.androidx.viewer.components.GHLoadingScreen
 import land.sungbin.androidx.viewer.components.GHSettingSheetContent
-import land.sungbin.androidx.viewer.exception.GitHubAuthenticateException
+import land.sungbin.androidx.fetcher.GitHubAuthenticateException
 import land.sungbin.androidx.viewer.preferences.PreferencesKey
 import land.sungbin.androidx.viewer.utils.GitHubFetchCachingContext
 import land.sungbin.androidx.viewer.utils.GitHubFetchLoggingContext

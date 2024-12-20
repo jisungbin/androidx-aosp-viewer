@@ -1,10 +1,5 @@
-/*
- * Developed by Ji Sungbin 2024.
- *
- * Licensed under the MIT.
- * Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
- */
-
+// Copyright 2024 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
 import java.io.IOException
@@ -39,9 +34,8 @@ public data class RemoteCachingContext(
     val candidateCache = cache[ref]?.getSource(ENTRY_BODY)?.use { source ->
       Buffer().apply { writeAll(source) }
     }
-    if (candidateCache != null) return candidateCache
 
-    return null
+    return candidateCache
   }
 
   internal fun putSource(ref: String, source: ByteString): Boolean {
