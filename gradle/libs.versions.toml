@@ -4,7 +4,7 @@ jdk = "22"
 gradle-android = "8.7.3"
 
 kotlin-core = "2.1.0"
-kotlin-coroutines = "1.10.0"
+kotlin-coroutines = "1.10.1"
 kotlin-immutableCollections = "0.3.8"
 
 androidx-activity = "1.9.3"
