@@ -3,7 +3,7 @@
 package land.sungbin.androidx.viewer
 
 import android.app.Application
-import timber.log.Timber
+import thirdparty.Timber
 
 class App : Application() {
   override fun onCreate() {

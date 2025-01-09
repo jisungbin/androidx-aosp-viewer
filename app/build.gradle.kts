@@ -7,7 +7,9 @@ plugins {
   id("com.android.application")
   kotlin("android")
   kotlin("plugin.compose")
+  id("kotlin-parcelize")
   id(libs.plugins.kotlin.ksp.get().pluginId)
+  id(libs.plugins.kotlin.poko.get().pluginId)
 }
 
 val secrets = Properties().apply {
@@ -57,6 +59,11 @@ kotlin {
   }
 }
 
+ksp {
+  arg("me.tatarka.inject.dumpGraph", "true")
+  arg("circuit.codegen.mode", "kotlin_inject_anvil")
+}
+
 composeCompiler {
   featureFlags = setOf(
     ComposeFeatureFlag.OptimizeNonSkippingGroups,
@@ -66,6 +73,7 @@ composeCompiler {
 
 dependencies {
   implementation(projects.androidxFetcher)
+  implementation(projects.thirdparty.timber)
 
   implementation(libs.androidx.activity)
   implementation(libs.androidx.datastore)
@@ -77,6 +85,7 @@ dependencies {
   implementation(libs.kotlin.immutableCollections)
 
   implementation(libs.circuit)
+  implementation(libs.circuit.overlay)
   implementation(libs.circuit.codegen)
   ksp(libs.circuit.codegen.ksp)
 
@@ -93,7 +102,6 @@ dependencies {
   implementation(libs.okio)
 
   implementation(libs.moshi)
-  implementation(libs.timber)
 
   testImplementation(kotlin("test-junit5"))
   testImplementation(libs.test.assertk)

@@ -1,6 +1,6 @@
 // Copyright 2024 Ji Sungbin
 // SPDX-License-Identifier: Apache-2.0
-package land.sungbin.androidx.viewer.components
+package land.sungbin.androidx.viewer.design
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import land.sungbin.androidx.fetcher.GitContent
 
-@Composable fun GHContentTreeScreen(
+@Composable fun GHContentTree(
   contents: ImmutableList<GitContent>,
   modifier: Modifier = Modifier,
   listState: LazyListState = rememberLazyListState(),
@@ -27,16 +27,16 @@ import land.sungbin.androidx.fetcher.GitContent
 ) {
   LazyColumn(modifier = modifier, state = listState) {
     items(contents, key = GitContent::url) { content ->
-      if (content.blob == null) {
+      if (content.isDirectory) {
         GHFolder(
+          content.path,
           modifier = Modifier.fillMaxWidth(),
-          name = content.path,
           onClick = { onContentClick(content) },
         )
       } else {
         GHBlob(
+          content,
           modifier = Modifier.fillMaxWidth(),
-          content = content,
           onClick = { onContentClick(content) },
         )
       }
@@ -50,10 +50,10 @@ import land.sungbin.androidx.fetcher.GitContent
   onClick: () -> Unit = {},
 ) {
   Text(
+    name,
     modifier = modifier
       .clickable(onClick = onClick)
       .padding(vertical = 8.dp, horizontal = 16.dp),
-    text = name,
     style = MaterialTheme.typography.titleMedium,
   )
 }
@@ -70,10 +70,10 @@ import land.sungbin.androidx.fetcher.GitContent
       .clickable(onClick = onClick)
       .padding(vertical = 8.dp, horizontal = 16.dp),
   ) {
-    Text(text = content.path, style = MaterialTheme.typography.titleMedium)
+    Text(content.path, style = MaterialTheme.typography.titleMedium)
     Text(
+      "%.2f KB".format(blob.size.toFloat() / 1_000),
       modifier = Modifier.paddingFromBaseline(top = 20.dp),
-      text = "%.2f KB".format(blob.size.toFloat() / 1_000),
       style = MaterialTheme.typography.bodySmall,
     )
   }

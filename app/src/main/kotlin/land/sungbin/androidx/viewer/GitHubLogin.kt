@@ -7,11 +7,12 @@ import android.content.Intent
 import android.net.Uri
 import androidx.annotation.UiContext
 import com.squareup.moshi.JsonReader
+import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
 import kotlin.random.nextUInt
-import land.sungbin.androidx.viewer.utils.runSuspendCatching
+import land.sungbin.androidx.viewer.util.runSuspendCatching
 import okhttp3.HttpUrl
 import okhttp3.MediaType
 import okhttp3.OkHttpClient
@@ -21,7 +22,7 @@ import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.BufferedSink
 import okio.BufferedSource
-import timber.log.Timber
+import thirdparty.Timber
 
 // TODO unit testing?
 class GitHubLogin {
@@ -121,6 +122,6 @@ class GitHubLogin {
     const val LOGOUT_FLAG = -1L
 
     // `SimpleDateFormat.getDateInstance()` is not singleton instance
-    val LOGIN_DATE_FORMAT = SimpleDateFormat.getDateInstance()
+    val LOGIN_DATE_FORMAT: DateFormat = SimpleDateFormat.getDateInstance()
   }
 }

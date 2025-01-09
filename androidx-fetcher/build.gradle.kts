@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 plugins {
   kotlin("jvm")
-  alias(libs.plugins.kotlin.poko)
-  id(libs.plugins.kotlin.ksp.get().pluginId)
+  id(libs.plugins.kotlin.poko.get().pluginId)
 }
 
 kotlin {
@@ -24,12 +23,6 @@ dependencies {
   implementation(libs.kotlin.immutableCollections)
 
   compileOnly(libs.compose.stableMarker)
-
-  implementation(libs.kotlininject)
-  implementation(libs.kotlininject.anvil)
-  implementation(libs.kotlininject.anvil.scopes)
-  ksp(libs.kotlininject.ksp)
-  ksp(libs.kotlininject.anvil.ksp)
 
   implementation(platform(libs.okhttp.bom))
   implementation(libs.okhttp.core)

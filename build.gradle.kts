@@ -10,6 +10,7 @@ plugins {
   kotlin("jvm") version libs.versions.kotlin.asProvider() apply false
   kotlin("plugin.compose") version libs.versions.kotlin.asProvider() apply false
   alias(libs.plugins.kotlin.ksp) apply false
+  alias(libs.plugins.kotlin.poko) apply false
   alias(libs.plugins.spotless)
 }
 
