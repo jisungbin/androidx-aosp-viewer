@@ -19,7 +19,7 @@ circuit = "0.25.0"
 kotlininject = "0.7.2"
 kotlininject-anvil = "0.1.2"
 
-okio = "3.10.1"
+okio = "3.10.2"
 okhttp = "5.0.0-alpha.14"
 
 moshi = "1.15.2"
