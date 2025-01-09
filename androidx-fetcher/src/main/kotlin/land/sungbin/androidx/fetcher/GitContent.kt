@@ -6,8 +6,7 @@ import androidx.compose.runtime.Immutable
 import kotlinx.collections.immutable.ImmutableList
 import okio.ByteString
 
-@Immutable
-public data class GitContent(
+@Immutable public data class GitContent(
   public val path: String,
   public val url: String,
   public val blob: ByteString?,

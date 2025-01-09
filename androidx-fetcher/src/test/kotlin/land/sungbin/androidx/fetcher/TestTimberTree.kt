@@ -2,21 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
-class TestLogger : Logger() {
+import java.util.logging.Level
+import thirdparty.Timber
+
+class TestTimberTree : Timber.Tree() {
   val debugs: List<String> field = mutableListOf()
   val warns: List<String> field = mutableListOf()
   val errors: List<String> field = mutableListOf()
 
-  override fun debug(lazyMessage: () -> String) {
-    debugs += lazyMessage()
-  }
-
-  override fun warn(lazyMessage: () -> String) {
-    warns += lazyMessage()
-  }
-
-  override fun error(lazyMessage: () -> String) {
-    errors += lazyMessage()
+  override fun log(level: Level, tag: String?, message: String, t: Throwable?) {
+    when (level) {
+      Level.INFO -> debugs += message
+      Level.WARNING -> warns += message
+      Level.SEVERE -> errors += message
+    }
   }
 
   fun clear() {

@@ -27,8 +27,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 class AndroidxRepositoryReaderTest {
   private lateinit var server: MockWebServer
 
-  private val logger = TestLogger()
-  private val reader = AndroidxRepositoryReader(logger, dispatcher = UnconfinedTestDispatcher())
+  private val logger = TestTimberTree()
+  private val reader = AndroidxRepositoryReader(dispatcher = UnconfinedTestDispatcher()).useLogger(logger)
 
   @BeforeTest fun prepare(server: MockWebServer) {
     this.server = server
@@ -38,7 +38,7 @@ class AndroidxRepositoryReaderTest {
     logger.clear()
   }
 
-  @Test fun truncatedTreeMakesWarning(): Unit = runTest {
+  @Test fun truncatedTreeMakesWarning() = runTest {
     @Language("json") val source = """
       {
         "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
@@ -64,7 +64,7 @@ class AndroidxRepositoryReaderTest {
     )
   }
 
-  @Test fun noRootTreeMakesError(): Unit = runTest {
+  @Test fun noRootTreeMakesError() = runTest {
     @Language("json") val source = """
       {
         "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
@@ -81,7 +81,7 @@ class AndroidxRepositoryReaderTest {
     )
   }
 
-  @Test fun incompleteTreeMakesWarning(): Unit = runTest {
+  @Test fun incompleteTreeMakesWarning() = runTest {
     @Language("json") val source = """
       {
         "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
@@ -105,7 +105,7 @@ class AndroidxRepositoryReaderTest {
     )
   }
 
-  @Test fun incompleteBlobMakesException(): Unit = runTest {
+  @Test fun incompleteBlobMakesException() = runTest {
     val blobUrl = server.url("blob.txt")
 
     server.dispatcher = object : Dispatcher() {
@@ -146,7 +146,7 @@ class AndroidxRepositoryReaderTest {
     assertThat(logger.warns).contains("The content of the blob is missing. Please check the given source: ")
   }
 
-  @Test fun unsupportedBlobMakesException(): Unit = runTest {
+  @Test fun unsupportedBlobMakesException() = runTest {
     val blobUrl = server.url("blob.txt")
 
     server.dispatcher = object : Dispatcher() {
@@ -188,7 +188,7 @@ class AndroidxRepositoryReaderTest {
     assertThat(logger.warns).contains("Unsupported encoding: utf8")
   }
 
-  @Test fun gitTreeParsedWithTrees(): Unit = runTest {
+  @Test fun gitTreeParsedWithTrees() = runTest {
     @Language("json") val source = """
       {
         "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
@@ -227,7 +227,7 @@ class AndroidxRepositoryReaderTest {
     )
   }
 
-  @Test fun gitTreeParsedWithBlobsInSortedOrder(): Unit = runTest {
+  @Test fun gitTreeParsedWithBlobsInSortedOrder() = runTest {
     val helloBlobUrl = server.url("blob/hello.txt")
     val worldBlobUrl = server.url("blob/world.txt")
     val byeBlobUrl = server.url("blob/bye.txt")
@@ -289,7 +289,7 @@ class AndroidxRepositoryReaderTest {
     )
   }
 
-  @Test fun gitTreeParsedWithMixedInSortedOrder(): Unit = runTest {
+  @Test fun gitTreeParsedWithMixedInSortedOrder() = runTest {
     val helloBlobUrl = server.url("blob/hello.txt")
     val worldBlobUrl = server.url("blob/world.txt")
     val byeBlobUrl = server.url("blob/bye.txt")

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 plugins {
   kotlin("jvm")
+  alias(libs.plugins.kotlin.poko)
   id(libs.plugins.kotlin.ksp.get().pluginId)
 }
 
@@ -17,6 +18,8 @@ kotlin {
 }
 
 dependencies {
+  implementation(projects.thirdparty.timber)
+
   implementation(libs.kotlin.coroutines)
   implementation(libs.kotlin.immutableCollections)
 
@@ -43,4 +46,6 @@ dependencies {
   testImplementation(platform(libs.okhttp.bom))
   testImplementation(libs.test.okhttp.mockwebserver)
   testImplementation(libs.test.okio.fakefilesystem)
+
+  testImplementation(projects.thirdparty.okhttpTaskfaker)
 }

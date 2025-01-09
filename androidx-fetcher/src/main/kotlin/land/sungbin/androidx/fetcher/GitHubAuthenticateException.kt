@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
+import dev.drewhamilton.poko.Poko
 import java.io.IOException
 import java.net.HttpURLConnection.HTTP_FORBIDDEN
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import okhttp3.Response
 
-public data class GitHubAuthenticateException(
-  val code: Int,
+@Poko public class GitHubAuthenticateException(
+  public val code: Int,
   override val message: String,
 ) : IOException() {
   internal companion object {

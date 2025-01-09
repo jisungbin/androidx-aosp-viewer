@@ -1,9 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-  ~ Developed by Ji Sungbin 2024.
-  ~
-  ~ Licensed under the MIT.
-  ~ Please see full license: https://github.com/jisungbin/androidx-aosp-viewer/blob/trunk/LICENSE
-  -->
 <component name="InspectionProjectProfileManager">
   <profile version="1.0">
     <option name="myName" value="Project Default" />
@@ -31,6 +25,7 @@
     <inspection_tool class="GlancePreviewNotSupportedInUnitTestFiles" enabled="true" level="ERROR" enabled_by_default="true">
       <option name="composableFile" value="true" />
     </inspection_tool>
+    <inspection_tool class="GrazieInspection" enabled="false" level="GRAMMAR_ERROR" enabled_by_default="false" />
     <inspection_tool class="PreviewAnnotationInFunctionWithParameters" enabled="true" level="ERROR" enabled_by_default="true">
       <option name="composableFile" value="true" />
     </inspection_tool>

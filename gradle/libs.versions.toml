@@ -7,6 +7,7 @@ kotlin = "2.1.0"
 kotlin-ksp = "2.1.0-1.0.29"
 kotlin-coroutines = "1.10.1"
 kotlin-immutableCollections = "0.3.8"
+kotlin-poko = "0.18.2"
 
 androidx-activity = "1.9.3"
 androidx-datastore = "1.1.1"
@@ -34,6 +35,7 @@ test-assertk = "0.28.1"
 andriod-application = { id = "com.android.application", version.ref = "gradle-android" }
 
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "kotlin-ksp" }
+kotlin-poko = { id = "dev.drewhamilton.poko", version.ref = "kotlin-poko" }
 
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 

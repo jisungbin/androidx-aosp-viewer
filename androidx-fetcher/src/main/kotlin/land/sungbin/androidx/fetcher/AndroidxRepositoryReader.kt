@@ -4,7 +4,6 @@ package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
 import java.io.IOException
-import kotlin.coroutines.coroutineContext
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Deferred
@@ -23,12 +22,19 @@ import okio.BufferedSource
 import okio.ByteString
 import okio.ByteString.Companion.decodeBase64
 import okio.buffer
+import org.jetbrains.annotations.TestOnly
+import thirdparty.Timber
 
 public class AndroidxRepositoryReader(
-  private val logger: Logger = Logger.Default,
+  private val cache: AndroidxRepositoryCache? = null,
   private val client: OkHttpClient = OkHttpClient(),
   private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+  private var timber: Timber.Tree = Timber.Forest
+
+  @TestOnly internal fun useLogger(timber: Timber.Tree): AndroidxRepositoryReader =
+    apply { this.timber = timber }
+
   @Throws(IOException::class, GitHubAuthenticateException::class)
   public suspend fun read(
     source: BufferedSource,
@@ -45,10 +51,10 @@ public class AndroidxRepositoryReader(
           "tree" -> root = readTree(reader, parent, noCache)
           "truncated" -> {
             if (reader.nextBoolean()) {
-              logger.warn {
+              timber.w(
                 "The repository has too many files to read. " +
-                  "Some files may not be included in the list."
-              }
+                  "Some files may not be included in the list.",
+              )
             }
           }
           else -> reader.skipValue()
@@ -61,10 +67,10 @@ public class AndroidxRepositoryReader(
       compareBy<GitContent> { it.blob == null } // Folders first
         .thenBy { it.path }, // Alphabetical order
     ) ?: run {
-      logger.error {
+      timber.e(
         "No tree object found in the repository. " +
-          "Please check the given source: ${snapshotForError.utf8()}"
-      }
+          "Please check the given source: ${snapshotForError.utf8()}",
+      )
       emptyList()
     }
   }
@@ -97,10 +103,10 @@ public class AndroidxRepositoryReader(
       reader.endObject()
 
       if (path == null || type == null || url == null) {
-        logger.warn {
+        timber.w(
           "Required fields are missing in the tree object. " +
-            "(path: $path, type: $type, url: $url)"
-        }
+            "(path: $path, type: $type, url: $url)",
+        )
         continue
       }
 
@@ -117,9 +123,8 @@ public class AndroidxRepositoryReader(
     contents.awaitAll()
   }
 
-  @Throws(IOException::class, GitHubAuthenticateException::class)
   private suspend fun readBlobContent(url: String, noCache: Boolean): ByteString {
-    val cache = coroutineContext[RemoteCachingContext]?.takeUnless { noCache }?.takeIf { it.enabled }
+    val cache = cache.takeUnless { noCache }
     val cacheRef = url.substringAfterLast('/')
 
     val request = Request.Builder().url(url).build()
@@ -129,14 +134,14 @@ public class AndroidxRepositoryReader(
 
     return client.newCall(request).executeAsync().use { response ->
       if (!response.isSuccessful) {
-        logger.error { "Failed to fetch the blob: $response" }
+        timber.e("Failed to fetch the blob: $response")
         GitHubAuthenticateException.parse(response)?.let { throw it }
         throw IOException(response.message)
       }
 
       val source = response.body.source()
       if (cache?.putSource(cacheRef, source.buffer.snapshot()) == false) {
-        logger.error { "Failed to cache the blob: $url" }
+        timber.e("Failed to cache the blob: $url")
       }
 
       var content: String? = null
@@ -155,15 +160,15 @@ public class AndroidxRepositoryReader(
       }
 
       if (content == null) {
-        logger.warn {
+        timber.w(
           "The content of the blob is missing. " +
-            "Please check the given source: ${source.buffer.snapshot().utf8()}"
-        }
+            "Please check the given source: ${source.buffer.snapshot().utf8()}",
+        )
         error("The content of the blob is missing.")
       }
 
       if (encoding != "base64") {
-        logger.warn { "Unsupported encoding: $encoding" }
+        timber.w("Unsupported encoding: $encoding")
         error("The encoding of the blob is wrong.")
       }
 

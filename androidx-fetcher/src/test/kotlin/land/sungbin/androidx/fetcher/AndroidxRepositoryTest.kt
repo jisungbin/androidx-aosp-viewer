@@ -16,11 +16,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withContext
-import land.sungbin.androidx.fetcher.thirdparty.TaskFaker
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
-import mockwebserver3.QueueDispatcher
 import mockwebserver3.junit5.internal.MockWebServerExtension
 import okhttp3.internal.cache.DiskLruCache
 import okhttp3.logging.HttpLoggingInterceptor
@@ -28,102 +25,135 @@ import okio.Path.Companion.toOkioPath
 import okio.fakefilesystem.FakeFileSystem
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
+import thirdparty.TaskFaker
 
 @ExtendWith(MockWebServerExtension::class)
 class AndroidxRepositoryTest {
   @field:TempDir private lateinit var tempDir: Path
-  private lateinit var cachingContext: RemoteCachingContext
+  private var cache: AndroidxRepositoryCache? = null
   private val fs = FakeFileSystem()
 
   private lateinit var server: MockWebServer
-  private lateinit var repo: AndroidxRepository
-  private val logger = TestLogger()
+  private val logger = TestTimberTree()
 
   private val taskFaker = TaskFaker()
-  private val taskRunner = taskFaker.taskRunner
-
-  private fun createCachingContext() =
-    RemoteCachingContext(
-      cache = DiskLruCache(
-        fileSystem = fs,
-        directory = tempDir.toOkioPath(),
-        appVersion = RemoteCachingContext.CACHE_VERSION,
-        valueCount = RemoteCachingContext.ENTRY_SIZE,
-        maxSize = Long.MAX_VALUE,
-        taskRunner = taskRunner,
-      ),
-    )
-      .also { context ->
-        context.cache!!.initialize()
-        cachingContext = context
-      }
+  private val testTaskRunner = taskFaker.taskRunner
 
   @BeforeTest fun prepare(server: MockWebServer) {
     this.server = server
-    repo = AndroidxRepository(server.url("/"), logger, UnconfinedTestDispatcher())
-    repeat(3) { server.enqueue(MockResponse()) }
-    createCachingContext()
+    cache = AndroidxRepositoryCache(
+      cache = DiskLruCache(
+        fileSystem = fs,
+        directory = tempDir.toOkioPath(),
+        appVersion = AndroidxRepositoryCache.CACHE_VERSION,
+        valueCount = AndroidxRepositoryCache.ENTRY_SIZE,
+        maxSize = Long.MAX_VALUE,
+        taskRunner = testTaskRunner,
+      ),
+    )
   }
 
   @AfterTest fun cleanup() {
-    cachingContext.cache!!.close()
+    cache!!.cache.close()
     taskFaker.close()
     fs.checkNoOpenFiles()
     logger.clear()
   }
 
-  @Test fun given_remoteLoggingContext_with_level_above_none_when_fetching_enable_http_logging(): Unit = runTest {
-    val loggingContext = RemoteLoggingContext(level = HttpLoggingInterceptor.Level.BASIC)
-    withContext(loggingContext) { repo.fetch() }
+  @Test fun fetchingWithBasicLogEnablesHttpLogging() = runTest {
+    val repo = AndroidxRepository(
+      logLevel = HttpLoggingInterceptor.Level.BASIC,
+      base = server.url("/"),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+      .useLogger(logger)
+
+    server.enqueue(MockResponse())
+    repo.fetch()
 
     assertThat(logger.debugs)
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
   }
 
-  @Test fun given_remoteLoggingContext_with_level_none_when_fetching_disable_http_logging(): Unit = runTest {
-    val loggingContext = RemoteLoggingContext(level = HttpLoggingInterceptor.Level.NONE)
-    withContext(loggingContext) { repo.fetch() }
+  @Test fun fetchingWithNoneLogDisablesHttpLogging() = runTest {
+    val repo = AndroidxRepository(
+      logLevel = HttpLoggingInterceptor.Level.NONE,
+      base = server.url("/"),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+      .useLogger(logger)
+
+    server.enqueue(MockResponse())
+    repo.fetch()
 
     assertThat(logger.debugs).isEmpty()
   }
 
-  @Test fun given_remoteCachingContext_when_fetching_apply_http_cache(): Unit = runTest {
-    val loggingContext = RemoteLoggingContext(level = HttpLoggingInterceptor.Level.BASIC)
-    withContext(loggingContext + cachingContext) { repo.fetch() }
+  @Test fun fetchingWithCacheEnablesHttpCache() = runTest {
+    val repo = AndroidxRepository(
+      cache = cache!!,
+      base = server.url("/"),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+      .useLogger(logger)
+
+    server.enqueue(MockResponse())
+    repo.fetch()
 
     assertThat(logger.debugs, name = "process real call")
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
     logger.clear()
 
-    withContext(loggingContext + cachingContext) { repo.fetch() }
+    server.enqueue(MockResponse())
+    repo.fetch()
 
-    assertThat(logger.debugs, name = "no real call").isEmpty()
+    assertThat(logger.debugs, name = "empty call").isEmpty()
   }
 
-  @Test fun given_remoteCachingContext_when_noCache_fetching_not_apply_http_cache(): Unit = runTest {
-    val loggingContext = RemoteLoggingContext(level = HttpLoggingInterceptor.Level.BASIC)
-    withContext(loggingContext + cachingContext) { repo.fetch() }
+  @Test fun noCacheFetchingWithCacheDisablesHttpCache() = runTest {
+    val repo = AndroidxRepository(
+      cache = cache!!,
+      base = server.url("/"),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+      .useLogger(logger)
 
-    assertThat(logger.debugs)
+    server.enqueue(MockResponse())
+    repo.fetch()
+
+    assertThat(logger.debugs, name = "first cache call")
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
     logger.clear()
 
-    withContext(loggingContext + cachingContext) { repo.fetch(noCache = true) }
+    server.enqueue(MockResponse())
+    repo.fetch(noCache = true)
 
-    assertThat(logger.debugs)
+    assertThat(logger.debugs, name = "second cache call")
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
   }
 
-  @Test fun given_githubAuthorizationContext_when_fetching_add_authorization_header(): Unit = runTest {
-    val loggingContext = RemoteLoggingContext(level = HttpLoggingInterceptor.Level.HEADERS)
-    val authorizationContext = GitHubAuthorizationContext("token")
-    withContext(loggingContext + authorizationContext) { repo.fetch() }
+  @Test fun fetchingWithAuthorizationTokenAddsAuthorizationHeader() = runTest {
+    val repo = AndroidxRepository(
+      authorizationToken = "token2",
+      logLevel = HttpLoggingInterceptor.Level.HEADERS,
+      base = server.url("/"),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+      .useLogger(logger)
 
-    assertThat(logger.debugs).contains("Authorization: Bearer token")
+    server.enqueue(MockResponse())
+    repo.fetch()
+
+    assertThat(logger.debugs).contains("Authorization: Bearer token2")
   }
 
-  @Test fun given_api_response_is_not_successful_when_fetching_log_error_and_throws(): Unit = runTest {
-    (server.dispatcher as QueueDispatcher).clear()
+  @Test fun errorFetchinLogsAndThrows() = runTest {
+    val repo = AndroidxRepository(
+      base = server.url("/"),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+      .useLogger(logger)
+
     server.enqueue(MockResponse(code = HTTP_BAD_REQUEST))
     assertFailure { repo.fetch() }.hasClass<IOException>()
 
@@ -136,10 +166,14 @@ class AndroidxRepositoryTest {
     )
   }
 
-  @Test fun throws_AuthenticateException_when_receive_400_errors(): Unit = runTest {
-    (server.dispatcher as QueueDispatcher).clear()
-    server.enqueue(MockResponse(code = HTTP_UNAUTHORIZED))
+  @Test fun unauthorizedFetchingThrowsAuthenticateException() = runTest {
+    val repo = AndroidxRepository(
+      base = server.url("/"),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+      .useLogger(logger)
 
+    server.enqueue(MockResponse(code = HTTP_UNAUTHORIZED))
     assertFailure { repo.fetch() }.hasClass<GitHubAuthenticateException>()
   }
 }

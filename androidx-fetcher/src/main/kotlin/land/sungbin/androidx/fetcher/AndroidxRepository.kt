@@ -3,7 +3,6 @@
 package land.sungbin.androidx.fetcher
 
 import java.io.IOException
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,31 +14,31 @@ import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.BufferedSource
 import okio.buffer
+import org.jetbrains.annotations.TestOnly
+import thirdparty.Timber
 
 public class AndroidxRepository(
+  private val authorizationToken: String? = null,
+  private val logLevel: HttpLoggingInterceptor.Level = HttpLoggingInterceptor.Level.BASIC,
+  private val cache: AndroidxRepositoryCache? = null,
   private val base: HttpUrl = "https://api.github.com".toHttpUrl(),
-  private val logger: Logger = Logger.Default,
   private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  @Throws(IOException::class, GitHubAuthenticateException::class)
-  public suspend fun fetch(ref: String = HOME_REF, cacheRef: String = ref, noCache: Boolean = false): BufferedSource {
-    val cache = coroutineContext[RemoteCachingContext]?.takeUnless { noCache }?.takeIf { it.enabled }
+  private var timber: Timber.Tree = Timber.Forest
 
-    val candidateCache = cache?.getCachedSource(cacheRef)
+  @TestOnly internal fun useLogger(timber: Timber.Tree): AndroidxRepository =
+    apply { this.timber = timber }
+
+  public suspend fun fetch(ref: String = HOME_REF, noCache: Boolean = false): BufferedSource {
+    val cache = cache.takeUnless { noCache }
+
+    val candidateCache = cache?.getCachedSource(ref)
     if (candidateCache != null) return candidateCache.buffer()
 
     var httpLogging: HttpLoggingInterceptor? = null
-
-    coroutineContext[RemoteLoggingContext]?.let { loggingContext ->
-      if (loggingContext.level > HttpLoggingInterceptor.Level.NONE) {
-        httpLogging = HttpLoggingInterceptor { message ->
-          logger.debug { message }
-        }
-          .apply { level = loggingContext.level }
-      }
+    if (logLevel > HttpLoggingInterceptor.Level.NONE) {
+      httpLogging = HttpLoggingInterceptor(timber::d).setLevel(logLevel)
     }
-
-    val token = coroutineContext[GitHubAuthorizationContext]?.token
 
     val client = OkHttpClient.Builder()
       .apply { httpLogging?.let(::addInterceptor) }
@@ -52,19 +51,19 @@ public class AndroidxRepository(
     val request = Request.Builder()
       .url(url)
       .addHeader("X-GitHub-Api-Version", "2022-11-28")
-      .apply { if (token != null) addHeader("Authorization", "Bearer $token") }
+      .apply { if (authorizationToken != null) addHeader("Authorization", "Bearer $authorizationToken") }
       .build()
     val response = withContext(dispatcher) { client.newCall(request).executeAsync() }
 
     if (!response.isSuccessful) {
-      logger.error { "Failed to fetch the repository: $response" }
+      timber.e("Failed to fetch the repository: $response")
       GitHubAuthenticateException.parse(response)?.let { throw it }
       throw IOException(response.message)
     }
 
     return response.body.source().also { source ->
-      if (cache?.putSource(cacheRef, source.buffer.snapshot()) == false) {
-        logger.error { "Failed to cache the repository: $ref" }
+      if (cache?.putSource(ref, source.buffer.snapshot()) == false) {
+        timber.e("Failed to cache the repository: $ref")
       }
     }
   }
