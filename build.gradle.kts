@@ -6,9 +6,10 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   alias(libs.plugins.andriod.application) apply false
-  kotlin("android") version libs.versions.kotlin.core apply false
-  kotlin("jvm") version libs.versions.kotlin.core apply false
-  kotlin("plugin.compose") version libs.versions.kotlin.core apply false
+  kotlin("android") version libs.versions.kotlin.asProvider() apply false
+  kotlin("jvm") version libs.versions.kotlin.asProvider() apply false
+  kotlin("plugin.compose") version libs.versions.kotlin.asProvider() apply false
+  alias(libs.plugins.kotlin.ksp) apply false
   alias(libs.plugins.spotless)
 }
 
@@ -64,7 +65,9 @@ allprojects {
       licenseHeaderFile(rootProject.file("spotless/copyright.xml"), "(<[^!?])")
     }
   }
+}
 
+subprojects {
   tasks.withType<KotlinCompile> {
     compilerOptions {
       optIn.addAll(
@@ -75,9 +78,7 @@ allprojects {
       )
     }
   }
-}
 
-subprojects {
   tasks.withType<Test> {
     useJUnitPlatform()
     // https://junit.org/junit5/docs/snapshot/user-guide/#writing-tests-parallel-execution

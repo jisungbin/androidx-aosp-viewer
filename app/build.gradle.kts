@@ -7,6 +7,7 @@ plugins {
   id("com.android.application")
   kotlin("android")
   kotlin("plugin.compose")
+  id(libs.plugins.kotlin.ksp.get().pluginId)
 }
 
 val secrets = Properties().apply {
@@ -75,15 +76,26 @@ dependencies {
   implementation(libs.kotlin.coroutines)
   implementation(libs.kotlin.immutableCollections)
 
+  implementation(libs.circuit)
+  implementation(libs.circuit.codegen)
+  ksp(libs.circuit.codegen.ksp)
+
+  implementation(libs.kotlininject)
+  implementation(libs.kotlininject.anvil)
+  implementation(libs.kotlininject.anvil.scopes)
+  ksp(libs.kotlininject.ksp)
+  ksp(libs.kotlininject.anvil.ksp)
+
   implementation(platform(libs.okhttp.bom))
   implementation(libs.okhttp.core)
   implementation(libs.okhttp.coroutines)
   implementation(libs.okhttp.logging)
   implementation(libs.okio)
-  implementation(libs.moshi)
 
+  implementation(libs.moshi)
   implementation(libs.timber)
 
   testImplementation(kotlin("test-junit5"))
+  testImplementation(libs.test.assertk)
   testImplementation(libs.test.kotlin.coroutines)
 }
