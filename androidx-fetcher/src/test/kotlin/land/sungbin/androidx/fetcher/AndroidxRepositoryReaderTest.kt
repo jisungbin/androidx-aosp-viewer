@@ -28,7 +28,8 @@ class AndroidxRepositoryReaderTest {
   private lateinit var server: MockWebServer
 
   private val logger = TestTimberTree()
-  private val reader = AndroidxRepositoryReader(dispatcher = UnconfinedTestDispatcher()).useLogger(logger)
+  private val repo = AndroidxRepository(dispatcher = UnconfinedTestDispatcher())
+  private val reader = AndroidxRepositoryReader(repo).useLogger(logger)
 
   @BeforeTest fun prepare(server: MockWebServer) {
     this.server = server

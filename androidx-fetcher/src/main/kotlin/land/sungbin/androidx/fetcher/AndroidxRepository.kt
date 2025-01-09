@@ -24,12 +24,13 @@ public class AndroidxRepository(
   private val base: HttpUrl = "https://api.github.com".toHttpUrl(),
   private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  private var timber: Timber.Tree = Timber.Forest
+  private var logger: Timber.Tree = Timber.Forest
 
   @TestOnly internal fun useLogger(timber: Timber.Tree): AndroidxRepository =
-    apply { this.timber = timber }
+    apply { this.logger = timber }
 
-  public suspend fun fetch(ref: String = HOME_REF, noCache: Boolean = false): BufferedSource {
+  @Throws(IOException::class, GitHubAuthenticateException::class)
+  public suspend fun fetchTrees(ref: String = HOME_REF, noCache: Boolean = false): BufferedSource {
     val cache = cache.takeUnless { noCache }
 
     val candidateCache = cache?.getCachedSource(ref)
@@ -37,12 +38,8 @@ public class AndroidxRepository(
 
     var httpLogging: HttpLoggingInterceptor? = null
     if (logLevel > HttpLoggingInterceptor.Level.NONE) {
-      httpLogging = HttpLoggingInterceptor(timber::d).setLevel(logLevel)
+      httpLogging = HttpLoggingInterceptor(logger::d).setLevel(logLevel)
     }
-
-    val client = OkHttpClient.Builder()
-      .apply { httpLogging?.let(::addInterceptor) }
-      .build()
 
     val url = base.newBuilder()
       .addPathSegments("repos/androidx/androidx/git/trees")
@@ -53,17 +50,58 @@ public class AndroidxRepository(
       .addHeader("X-GitHub-Api-Version", "2022-11-28")
       .apply { if (authorizationToken != null) addHeader("Authorization", "Bearer $authorizationToken") }
       .build()
+
+    val client = OkHttpClient.Builder()
+      .apply { httpLogging?.let(::addInterceptor) }
+      .build()
     val response = withContext(dispatcher) { client.newCall(request).executeAsync() }
 
     if (!response.isSuccessful) {
-      timber.e("Failed to fetch the repository: $response")
+      logger.e("Failed to fetch the repository: $response")
       GitHubAuthenticateException.parse(response)?.let { throw it }
       throw IOException(response.message)
     }
 
     return response.body.source().also { source ->
       if (cache?.putSource(ref, source.buffer.snapshot()) == false) {
-        timber.e("Failed to cache the repository: $ref")
+        logger.e("Failed to cache the repository: $ref")
+      }
+    }
+  }
+
+  @Throws(IOException::class, GitHubAuthenticateException::class)
+  public suspend fun readBlobContent(url: String, noCache: Boolean = false): BufferedSource {
+    val cache = cache.takeUnless { noCache }
+    val cacheRef = url.substringAfterLast('/')
+
+    val candidateCache = cache?.getCachedSource(cacheRef)
+    if (candidateCache != null) return candidateCache.buffer()
+
+    var httpLogging: HttpLoggingInterceptor? = null
+    if (logLevel > HttpLoggingInterceptor.Level.NONE) {
+      httpLogging = HttpLoggingInterceptor(logger::d).setLevel(logLevel)
+    }
+
+    val request = Request.Builder()
+      .url(url)
+      .addHeader("X-GitHub-Api-Version", "2022-11-28")
+      .apply { if (authorizationToken != null) addHeader("Authorization", "Bearer $authorizationToken") }
+      .build()
+
+    val client = OkHttpClient.Builder()
+      .apply { httpLogging?.let(::addInterceptor) }
+      .build()
+    val response = withContext(dispatcher) { client.newCall(request).executeAsync() }
+
+    if (!response.isSuccessful) {
+      logger.e("Failed to fetch the blob: $response")
+      GitHubAuthenticateException.parse(response)?.let { throw it }
+      throw IOException(response.message)
+    }
+
+    return response.body.source().also { source ->
+      if (cache?.putSource(cacheRef, source.buffer.snapshot()) == false) {
+        logger.e("Failed to cache the blob: $url")
       }
     }
   }

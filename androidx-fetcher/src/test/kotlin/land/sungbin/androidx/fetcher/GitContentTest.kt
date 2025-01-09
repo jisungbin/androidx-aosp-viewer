@@ -7,37 +7,28 @@ import assertk.assertThat
 import assertk.assertions.hasMessage
 import assertk.assertions.isEqualTo
 import kotlin.test.Test
-import kotlinx.collections.immutable.persistentListOf
 
 class GitContentTest {
   @Test fun pathMustNotBeEmpty() {
     assertFailure {
-      GitContent("", "url", null, persistentListOf())
+      GitContent("", "url", null, null)
     }
       .hasMessage("path should not be empty")
   }
 
   @Test fun urlMustNotBeEmpty() {
     assertFailure {
-      GitContent("path", "", null, persistentListOf())
+      GitContent("path", "", null, null)
     }
       .hasMessage("url should not be empty")
   }
 
-  @Test fun currentParentPath() {
-    val parent = GitContent("parent", "url", null, persistentListOf())
-    val child = GitContent("child", "url", null, persistentListOf(parent))
+  @Test fun paths() {
+    val parent = GitContent("parent", "url", null)
+    val child = GitContent("child", "url", null, parent)
+    val grandChild = GitContent("grandChild", "url", null, child)
 
-    assertThat(child.currentParentPath()).isEqualTo("parent")
-  }
-
-  @Test fun wholeParentPaths() {
-    val parent = GitContent("parent", "url", null, persistentListOf())
-    val parent2 = GitContent("parent2", "url", null, persistentListOf(parent))
-    val parent3 = GitContent("parent3", "url", null, persistentListOf(parent2))
-    val parent4 = GitContent("parent4", "url", null, persistentListOf(parent3))
-    val child = GitContent("child", "url", null, persistentListOf(parent4))
-
-    assertThat(child.wholeParentPaths()).isEqualTo("/parent/parent2/parent3/parent4")
+    assertThat(child.paths).isEqualTo("parent/child")
+    assertThat(grandChild.paths).isEqualTo("parent/child/grandChild")
   }
 }

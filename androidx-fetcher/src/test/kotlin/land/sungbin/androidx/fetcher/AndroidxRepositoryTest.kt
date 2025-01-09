@@ -42,7 +42,7 @@ class AndroidxRepositoryTest {
   @BeforeTest fun prepare(server: MockWebServer) {
     this.server = server
     cache = AndroidxRepositoryCache(
-      cache = DiskLruCache(
+      DiskLruCache(
         fileSystem = fs,
         directory = tempDir.toOkioPath(),
         appVersion = AndroidxRepositoryCache.CACHE_VERSION,
@@ -69,7 +69,7 @@ class AndroidxRepositoryTest {
       .useLogger(logger)
 
     server.enqueue(MockResponse())
-    repo.fetch()
+    repo.fetchTrees()
 
     assertThat(logger.debugs)
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
@@ -84,7 +84,7 @@ class AndroidxRepositoryTest {
       .useLogger(logger)
 
     server.enqueue(MockResponse())
-    repo.fetch()
+    repo.fetchTrees()
 
     assertThat(logger.debugs).isEmpty()
   }
@@ -98,14 +98,14 @@ class AndroidxRepositoryTest {
       .useLogger(logger)
 
     server.enqueue(MockResponse())
-    repo.fetch()
+    repo.fetchTrees()
 
     assertThat(logger.debugs, name = "process real call")
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
     logger.clear()
 
     server.enqueue(MockResponse())
-    repo.fetch()
+    repo.fetchTrees()
 
     assertThat(logger.debugs, name = "empty call").isEmpty()
   }
@@ -119,14 +119,14 @@ class AndroidxRepositoryTest {
       .useLogger(logger)
 
     server.enqueue(MockResponse())
-    repo.fetch()
+    repo.fetchTrees()
 
     assertThat(logger.debugs, name = "first cache call")
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
     logger.clear()
 
     server.enqueue(MockResponse())
-    repo.fetch(noCache = true)
+    repo.fetchTrees(noCache = true)
 
     assertThat(logger.debugs, name = "second cache call")
       .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
@@ -142,7 +142,7 @@ class AndroidxRepositoryTest {
       .useLogger(logger)
 
     server.enqueue(MockResponse())
-    repo.fetch()
+    repo.fetchTrees()
 
     assertThat(logger.debugs).contains("Authorization: Bearer token2")
   }
@@ -155,7 +155,7 @@ class AndroidxRepositoryTest {
       .useLogger(logger)
 
     server.enqueue(MockResponse(code = HTTP_BAD_REQUEST))
-    assertFailure { repo.fetch() }.hasClass<IOException>()
+    assertFailure { repo.fetchTrees() }.hasClass<IOException>()
 
     assertThat(logger.errors).contains(
       "Failed to fetch the repository: Response{" +
@@ -174,6 +174,6 @@ class AndroidxRepositoryTest {
       .useLogger(logger)
 
     server.enqueue(MockResponse(code = HTTP_UNAUTHORIZED))
-    assertFailure { repo.fetch() }.hasClass<GitHubAuthenticateException>()
+    assertFailure { repo.fetchTrees() }.hasClass<GitHubAuthenticateException>()
   }
 }

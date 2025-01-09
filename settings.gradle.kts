@@ -36,7 +36,7 @@ dependencyResolutionManagement {
 }
 
 include(
-  ":app",
+  // ":app",
   ":androidx-fetcher",
   ":thirdparty:timber",
   ":thirdparty:okhttp-taskfaker",
