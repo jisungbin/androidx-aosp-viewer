@@ -31,6 +31,7 @@ dependencies {
 
   implementation(libs.moshi)
   implementation(libs.okio)
+  implementation(libs.kache)
 
   testImplementation(kotlin("test-junit5"))
   testImplementation(libs.test.assertk)
@@ -39,6 +40,4 @@ dependencies {
   testImplementation(platform(libs.okhttp.bom))
   testImplementation(libs.test.okhttp.mockwebserver)
   testImplementation(libs.test.okio.fakefilesystem)
-
-  testImplementation(projects.thirdparty.okhttpTaskfaker)
 }

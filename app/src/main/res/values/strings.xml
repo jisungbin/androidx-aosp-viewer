@@ -5,6 +5,10 @@
 <resources>
   <string name="app_name">AndroidxViewer</string>
 
+  <string name="screen_code">Code</string>
+  <string name="screen_note">Note</string>
+  <string name="screen_setting">Setting</string>
+
   <string name="preferences_font_size">Font size</string>
   <string name="preferences_max_cache_size">Max cache size</string>
   <string name="preferences_cache_size_unit">MB</string>
@@ -15,5 +19,6 @@
 
   <string name="gh_cannot_login">Failed to log in. GitHub OAuth ID or secret is null.</string>
   <string name="gh_fetch_failed">Failed to fetch the content.</string>
-  <string name="gh_fetch_failed_authenticate">Your GitHub authentication has expired, please log in again.</string>
+  <string name="gh_fetch_failed_authenticate_expired">Your GitHub authentication has expired, please log in again.</string>
+  <string name="gh_fetch_failed_authenticate_needed">You have reached the GitHub API request limit, please log in for your next request.</string>
 </resources>

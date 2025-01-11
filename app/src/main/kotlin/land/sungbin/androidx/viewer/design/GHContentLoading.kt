@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.viewer.design
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lottiefiles.dotlottie.core.compose.ui.DotLottieAnimation
+import com.lottiefiles.dotlottie.core.util.DotLottieSource
 
 @Composable fun GHContentLoading(modifier: Modifier = Modifier) {
-  Box(modifier = modifier, contentAlignment = Alignment.Center) {
-    CircularProgressIndicator()
-  }
+  DotLottieAnimation(
+    modifier = modifier,
+    source = DotLottieSource.Asset("whale.lottie"),
+    autoplay = true,
+    loop = true,
+  )
 }

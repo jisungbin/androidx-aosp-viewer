@@ -1,3 +1,5 @@
+// Copyright 2025 Ji Sungbin
+// SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.viewer.screen
 
 import androidx.compose.foundation.layout.Arrangement
@@ -35,33 +37,33 @@ import java.util.Date
 import kotlinx.parcelize.Parcelize
 import land.sungbin.androidx.viewer.GitHubLogin
 import land.sungbin.androidx.viewer.R
-import land.sungbin.androidx.viewer.screen.SettingEvent.ToggleGitHubLogin
-import land.sungbin.androidx.viewer.screen.SettingEvent.UpdatePreferences
+import land.sungbin.androidx.viewer.screen.SettingScreen.Event.ToggleGitHubLogin
+import land.sungbin.androidx.viewer.screen.SettingScreen.Event.UpdatePreferences
 import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 
-@Parcelize data object SettingScreen : Screen
+@Parcelize data object SettingScreen : Screen {
+  @Immutable data class State(
+    val fontSize: Int,
+    val maxCacheSize: Long,
+    val ghLoginDate: Long,
+    val eventSink: (Event) -> Unit,
+  ) : CircuitUiState
 
-sealed interface SettingEvent : CircuitUiEvent {
-  @Poko class UpdatePreferences(
-    val fontSize: Int? = null,
-    val maxCacheSize: Long? = null,
-    val ghLoginDate: Long? = null,
-  ) : SettingEvent
+  sealed interface Event : CircuitUiEvent {
+    @Poko class UpdatePreferences(
+      val fontSize: Int? = null,
+      val maxCacheSize: Long? = null,
+      val ghLoginDate: Long? = null,
+    ) : Event
 
-  data object ToggleGitHubLogin : SettingEvent
+    data object ToggleGitHubLogin : Event
+  }
 }
-
-@Immutable data class SettingState(
-  val fontSize: Int,
-  val maxCacheSize: Long,
-  val ghLoginDate: Long,
-  val eventSink: (SettingEvent) -> Unit,
-) : CircuitUiState
 
 private val notNumberRegex = Regex("\\D")
 
 @CircuitInject(SettingScreen::class, AppScope::class)
-@Composable fun Settings(state: SettingState, modifier: Modifier = Modifier) {
+@Composable fun Settings(state: SettingScreen.State, modifier: Modifier = Modifier) {
   val fontSize by rememberUpdatedState(state.fontSize)
   val maxCacheSize by rememberUpdatedState(state.maxCacheSize)
   val ghLoginDate by rememberUpdatedState(state.ghLoginDate)
@@ -80,7 +82,7 @@ private val notNumberRegex = Regex("\\D")
         enabled = fontSize + 1 <= 50,
         onClick = { state.eventSink(UpdatePreferences(fontSize = fontSize + 1)) },
       ) {
-        Icon(painterResource(R.drawable.ic_round_add_24), "Increase font size")
+        Icon(painterResource(R.drawable.ic_fill_add_24), "Increase font size")
       }
       Text(
         fontSize.toString(),
@@ -91,7 +93,7 @@ private val notNumberRegex = Regex("\\D")
         enabled = fontSize - 1 >= 10,
         onClick = { state.eventSink(UpdatePreferences(fontSize = fontSize - 1)) },
       ) {
-        Icon(painterResource(R.drawable.ic_round_remove_24), "Decrease font size")
+        Icon(painterResource(R.drawable.ic_fill_remove_24), "Decrease font size")
       }
     }
     Row(

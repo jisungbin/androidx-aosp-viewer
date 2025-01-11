@@ -7,26 +7,35 @@ import androidx.compose.runtime.Stable
 import okio.ByteString
 
 @Immutable public data class GitContent(
-  public val path: String,
+  public val name: String,
   public val url: String,
   public val blob: ByteString?,
   public val parent: GitContent? = null,
 ) {
   init {
-    require(path.isNotEmpty()) { "path should not be empty" }
+    require(name.isNotEmpty()) { "name should not be empty" }
     require(url.isNotEmpty()) { "url should not be empty" }
   }
-
-  public val isFile: Boolean get() = blob != null
-  public val isDirectory: Boolean get() = blob == null
 }
+
+public val GitContent.sha: String
+  get() = url.substringAfterLast('/', missingDelimiterValue = AndroidxRepository.HOME_REF)
+
+public val GitContent.isFile: Boolean
+  get() = blob != null
+
+public val GitContent.isDirectory: Boolean
+  get() = blob == null
+
+public val GitContent.isRoot: Boolean
+  get() = parent == null
 
 @Stable public val GitContent.paths: String
   get() = buildString {
     var parent = parent
     while (parent != null) {
-      insert(0, "${parent.path}/")
+      insert(0, "${parent.name}/")
       parent = parent.parent
     }
-    append(path)
+    append(name)
   }

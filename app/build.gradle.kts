@@ -22,7 +22,7 @@ android {
   compileSdk = 35
 
   defaultConfig {
-    minSdk = 23
+    minSdk = 24
     targetSdk = 35
 
     buildConfigField("String", "GH_ID", "\"${secrets["gh-id"]}\"")
@@ -60,7 +60,7 @@ kotlin {
 }
 
 ksp {
-  arg("me.tatarka.inject.dumpGraph", "true")
+  // arg("me.tatarka.inject.dumpGraph", "true")
   arg("circuit.codegen.mode", "kotlin_inject_anvil")
 }
 
@@ -80,12 +80,12 @@ dependencies {
 
   implementation(libs.compose.activity)
   implementation(libs.compose.material3)
+  implementation(libs.compose.lottie)
 
   implementation(libs.kotlin.coroutines)
   implementation(libs.kotlin.immutableCollections)
 
   implementation(libs.circuit)
-  implementation(libs.circuit.overlay)
   implementation(libs.circuit.codegen)
   ksp(libs.circuit.codegen.ksp)
 
@@ -102,6 +102,7 @@ dependencies {
   implementation(libs.okio)
 
   implementation(libs.moshi)
+  debugImplementation(libs.leakcanary)
 
   testImplementation(kotlin("test-junit5"))
   testImplementation(libs.test.assertk)

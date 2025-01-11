@@ -32,6 +32,11 @@ dependencyResolutionManagement {
       }
     }
     mavenCentral()
+    maven(url = "https://jitpack.io") {
+      content {
+        includeGroup("com.github.LottieFiles")
+      }
+    }
   }
 }
 
@@ -39,5 +44,4 @@ include(
   ":app",
   ":androidx-fetcher",
   ":thirdparty:timber",
-  ":thirdparty:okhttp-taskfaker",
 )

@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.Random
 import kotlin.random.nextUInt
 import land.sungbin.androidx.viewer.util.runSuspendCatching
+import me.tatarka.inject.annotations.Inject
 import okhttp3.HttpUrl
 import okhttp3.MediaType
 import okhttp3.OkHttpClient
@@ -22,10 +23,13 @@ import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.BufferedSink
 import okio.BufferedSource
+import software.amazon.lastmile.kotlin.inject.anvil.AppScope
+import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 import thirdparty.Timber
 
 // TODO unit testing?
-class GitHubLogin {
+@SingleIn(AppScope::class)
+@Inject class GitHubLogin {
   private val id = BuildConfig.GH_ID.orNull()
   private val secret = BuildConfig.GH_SECRET.orNull()
 
@@ -119,6 +123,9 @@ class GitHubLogin {
 
   companion object {
     private val TAG = GitHubLogin::class.simpleName!!
+
+    const val LOGIN_URI_SCHEME = "androidx-aosp-viewer"
+    const val LOGIN_URI_HOST = "github-login"
     const val LOGOUT_FLAG = -1L
 
     // `SimpleDateFormat.getDateInstance()` is not singleton instance

@@ -59,7 +59,7 @@ public class AndroidxRepositoryReader(private val repo: AndroidxRepository) {
 
     return root.sortedWith(
       compareBy(GitContent::isDirectory) // Folders first
-        .thenBy(GitContent::path), // Alphabetical order
+        .thenBy(GitContent::name), // Alphabetical order
     )
   }
 

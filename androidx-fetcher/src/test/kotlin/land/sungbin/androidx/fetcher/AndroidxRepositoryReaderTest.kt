@@ -9,7 +9,6 @@ import assertk.assertions.containsExactly
 import assertk.assertions.hasMessage
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -25,15 +24,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(MockWebServerExtension::class)
 class AndroidxRepositoryReaderTest {
-  private lateinit var server: MockWebServer
-
   private val logger = TestTimberTree()
   private val repo = AndroidxRepository(dispatcher = UnconfinedTestDispatcher())
   private val reader = AndroidxRepositoryReader(repo).useLogger(logger)
-
-  @BeforeTest fun prepare(server: MockWebServer) {
-    this.server = server
-  }
 
   @AfterTest fun cleanup() {
     logger.clear()
@@ -106,7 +99,7 @@ class AndroidxRepositoryReaderTest {
     )
   }
 
-  @Test fun incompleteBlobMakesException() = runTest {
+  @Test fun incompleteBlobMakesException(server: MockWebServer) = runTest {
     val blobUrl = server.url("blob.txt")
 
     server.dispatcher = object : Dispatcher() {
@@ -147,7 +140,7 @@ class AndroidxRepositoryReaderTest {
     assertThat(logger.warns).contains("The content of the blob is missing. Please check the given source: ")
   }
 
-  @Test fun unsupportedBlobMakesException() = runTest {
+  @Test fun unsupportedBlobMakesException(server: MockWebServer) = runTest {
     val blobUrl = server.url("blob.txt")
 
     server.dispatcher = object : Dispatcher() {
@@ -216,19 +209,19 @@ class AndroidxRepositoryReaderTest {
 
     assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
       GitContent(
-        path = "tracing",
+        name = "tracing",
         url = "https://api.github.com/repos/androidx/androidx/git/trees/319c54d1ca15c9d3e3574d839a1f58b9a49b5e1f",
         blob = null,
       ),
       GitContent(
-        path = "transition",
+        name = "transition",
         url = "https://api.github.com/repos/androidx/androidx/git/trees/2efb04256a8de6b2f54e009ee01162fad848d76c",
         blob = null,
       ),
     )
   }
 
-  @Test fun gitTreeParsedWithBlobsInSortedOrder() = runTest {
+  @Test fun gitTreeParsedWithBlobsInSortedOrder(server: MockWebServer) = runTest {
     val helloBlobUrl = server.url("blob/hello.txt")
     val worldBlobUrl = server.url("blob/world.txt")
     val byeBlobUrl = server.url("blob/bye.txt")
@@ -283,14 +276,14 @@ class AndroidxRepositoryReaderTest {
     """.trimIndent()
 
     assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
-      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
-      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
-      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
+      GitContent(name = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
+      GitContent(name = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
+      GitContent(name = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
+      GitContent(name = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
     )
   }
 
-  @Test fun gitTreeParsedWithMixedInSortedOrder() = runTest {
+  @Test fun gitTreeParsedWithMixedInSortedOrder(server: MockWebServer) = runTest {
     val helloBlobUrl = server.url("blob/hello.txt")
     val worldBlobUrl = server.url("blob/world.txt")
     val byeBlobUrl = server.url("blob/bye.txt")
@@ -359,12 +352,12 @@ class AndroidxRepositoryReaderTest {
     """.trimIndent()
 
     assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(path = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
-      GitContent(path = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
-      GitContent(path = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
-      GitContent(path = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
-      GitContent(path = "tracing", url = "url", blob = null),
-      GitContent(path = "transition", url = "url", blob = null),
+      GitContent(name = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
+      GitContent(name = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
+      GitContent(name = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
+      GitContent(name = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
+      GitContent(name = "tracing", url = "url", blob = null),
+      GitContent(name = "transition", url = "url", blob = null),
     )
   }
 
