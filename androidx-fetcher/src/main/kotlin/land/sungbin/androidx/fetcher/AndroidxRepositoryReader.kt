@@ -4,40 +4,33 @@ package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
 import java.io.IOException
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import okio.BufferedSource
 import okio.ByteString
 import okio.ByteString.Companion.decodeBase64
-import org.jetbrains.annotations.TestOnly
+import okio.Source
+import okio.buffer
 import thirdparty.Timber
 
 public class AndroidxRepositoryReader(private val repo: AndroidxRepository) {
-  private var logger: Timber.Tree = Timber.Forest
-
-  @TestOnly internal fun useLogger(timber: Timber.Tree): AndroidxRepositoryReader =
-    apply { this.logger = timber }
-
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  public suspend fun read(
-    source: BufferedSource,
+  public fun readTree(
+    source: Source,
     parent: GitContent? = null,
     noCache: Boolean = false,
-  ): List<GitContent> {
+  ): AndroidxRepositoryTree {
+    val source = source.buffer()
     val snapshotForError = source.buffer.snapshot()
-    var root: List<GitContent>? = null
+    var tree: List<GitContent>? = null
+    var truncated = false
 
     JsonReader.of(source).use { reader ->
       reader.beginObject()
       while (reader.hasNext()) {
         when (reader.nextName()) {
-          "tree" -> root = readTree(reader, parent, noCache)
+          "tree" -> tree = readTreeContent(reader, parent, noCache)
           "truncated" -> {
             if (reader.nextBoolean()) {
-              logger.w(
+              truncated = true
+              Timber.w(
                 "The repository has too many files to read. " +
                   "Some files may not be included in the list.",
               )
@@ -49,67 +42,63 @@ public class AndroidxRepositoryReader(private val repo: AndroidxRepository) {
       reader.endObject()
     }
 
-    if (root == null) {
-      logger.e(
+    if (tree == null) {
+      Timber.e(
         "No tree object found in the repository. " +
           "Please check the given source: ${snapshotForError.utf8()}",
       )
-      return emptyList()
+      return AndroidxRepositoryTree.Empty
     }
 
-    return root.sortedWith(
-      compareBy(GitContent::isDirectory) // Folders first
-        .thenBy(GitContent::name), // Alphabetical order
+    return AndroidxRepositoryTree(
+      truncated,
+      tree.sortedWith(
+        compareBy(GitContent::isFile) // Folders first
+          .thenBy(GitContent::path), // Alphabetical order
+      ),
     )
   }
 
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  private suspend fun readTree(
+  private fun readTreeContent(
     reader: JsonReader,
     parent: GitContent?,
     noCache: Boolean,
-  ): List<GitContent> = coroutineScope {
-    val contents = mutableListOf<Deferred<GitContent>>()
-
-    reader.beginArray()
-    while (reader.hasNext()) {
-      var path: String? = null
-      var type: String? = null
-      var url: String? = null
-      var blob: (suspend () -> ByteString?)? = null
-
-      reader.beginObject()
+  ): List<GitContent> =
+    buildList {
+      reader.beginArray()
       while (reader.hasNext()) {
-        when (reader.nextName()) {
-          "path" -> path = reader.nextString()
-          "type" -> type = reader.nextString()
-          "url" -> url = reader.nextString()
-          else -> reader.skipValue()
+        var path: String? = null
+        var url: String? = null
+        var size: Long? = null
+
+        reader.beginObject()
+        while (reader.hasNext()) {
+          when (reader.nextName()) {
+            "path" -> path = reader.nextString()
+            "url" -> url = reader.nextString()
+            "size" -> size = reader.nextLong()
+            else -> reader.skipValue()
+          }
         }
-      }
-      reader.endObject()
+        reader.endObject()
 
-      if (path == null || type == null || url == null) {
-        logger.w(
-          "Required fields are missing in the tree object. " +
-            "(path: $path, type: $type, url: $url)",
-        )
-        continue
-      }
+        if (path == null || url == null) {
+          Timber.w(
+            "Required fields are missing in the tree object. " +
+              "(path: $path, url: $url)",
+          )
+          continue
+        }
 
-      if (type == "blob") blob = { readBlobContent(url, noCache) }
-      contents += async(Dispatchers.Unconfined) {
-        GitContent(path, url, blob?.invoke(), parent)
+        add(GitContent(path, url, size, parent))
       }
+      reader.endArray()
     }
-    reader.endArray()
-
-    contents.awaitAll()
-  }
 
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  private suspend fun readBlobContent(url: String, noCache: Boolean): ByteString {
-    val source = repo.readBlobContent(url, noCache)
+  public suspend fun readBlob(url: String, noCache: Boolean = false): ByteString {
+    val source = repo.fetchBlob(url, noCache).buffer()
 
     var content: String? = null
     var encoding: String? = null
@@ -127,7 +116,7 @@ public class AndroidxRepositoryReader(private val repo: AndroidxRepository) {
     }
 
     if (content == null) {
-      logger.w(
+      Timber.w(
         "The content of the blob is missing. " +
           "Please check the given source: ${source.buffer.snapshot().utf8()}",
       )
@@ -135,8 +124,8 @@ public class AndroidxRepositoryReader(private val repo: AndroidxRepository) {
     }
 
     if (encoding != "base64") {
-      logger.w("Unsupported encoding: $encoding")
-      error("The encoding of the blob is wrong.")
+      Timber.w("Unsupported encoding: $encoding")
+      error("The encoding of the blob is unsupported.")
     }
 
     return content.decodeBase64()!!

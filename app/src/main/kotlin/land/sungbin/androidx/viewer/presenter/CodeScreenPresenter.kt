@@ -44,7 +44,7 @@ import thirdparty.Timber
   private var repoReader: AndroidxRepositoryReader? = null
   private var snackbarHost: SnackbarHostState? = null
 
-  suspend fun fetch(
+  suspend fun assigningFetch(
     ref: String = AndroidxRepository.HOME_REF,
     parent: GitContent? = null,
     noCache: Boolean = false,
@@ -54,8 +54,8 @@ import thirdparty.Timber
     val repoReader = checkNotNull(repoReader) { "Repository reader is not loaded yet." }
     val snackbarHost = checkNotNull(snackbarHost) { "SnackbarHost is not loaded yet." }
 
-    runSuspendCatching { repo.fetchTrees(ref, noCache) }
-      .mapCatching { source -> sharedState.assignAsTree(repoReader.read(source, parent, noCache)) }
+    runSuspendCatching { repo.fetchTree(ref, noCache) }
+      .mapCatching { source -> sharedState.assignAsTree(repoReader.readTree(source, parent, noCache)) }
       .onFailure { exception ->
         Timber.e(exception, "Failed to fetch the content.")
 
@@ -79,14 +79,14 @@ import thirdparty.Timber
       repoReader = currentRepoReader
       this@CodeScreenPresenter.snackbarHost = snackbarHost
 
-      fetch(stringResolver = context::getString)
+      assigningFetch(stringResolver = context::getString)
     }
 
     return CodeScreen.State(item = sharedState.item.value) { event ->
       when (event) {
         is CodeScreen.Event.Fetch -> {
           scope.launch {
-            fetch(
+            assigningFetch(
               ref = event.parent?.sha ?: AndroidxRepository.HOME_REF,
               parent = event.parent,
               noCache = event.noCache,
@@ -94,7 +94,13 @@ import thirdparty.Timber
             )
           }
         }
-        is CodeScreen.Event.OpenBlob -> sharedState.assignAsBlob(event.content)
+        is CodeScreen.Event.OpenBlob -> {
+          scope.launch {
+            val reader = checkNotNull(repoReader) { "Repository reader is not loaded yet." }
+            val raw = reader.readBlob(event.content.url, event.noCache)
+            sharedState.assignAsBlob(raw.utf8(), event.content)
+          }
+        }
         is CodeScreen.Event.ToggleFavorite -> TODO()
       }
     }
@@ -116,8 +122,8 @@ import thirdparty.Timber
 
     val repo = AndroidxRepository(
       ghAccessToken,
-      HttpLoggingInterceptor.Level.entries[ghHttpLogLevel],
       cache,
+      HttpLoggingInterceptor.Level.entries[ghHttpLogLevel],
     )
     val repoReader = AndroidxRepositoryReader(repo)
 

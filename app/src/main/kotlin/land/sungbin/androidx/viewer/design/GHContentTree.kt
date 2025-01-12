@@ -35,7 +35,7 @@ import land.sungbin.androidx.fetcher.isDirectory
     items(contents) { content ->
       if (content.isDirectory) {
         GHFolder(
-          content.name,
+          content.path,
           modifier = Modifier.fillMaxWidth(),
           onClick = { onContentClick(content) },
         )
@@ -69,16 +69,16 @@ import land.sungbin.androidx.fetcher.isDirectory
   modifier: Modifier = Modifier,
   onClick: () -> Unit = {},
 ) {
-  val blob = requireNotNull(content.blob) { "blob must not be null" }
+  val size = requireNotNull(content.size) { "size must not be null" }
 
   Column(
     modifier = modifier
       .clickable(onClick = onClick)
       .padding(vertical = 8.dp, horizontal = 16.dp),
   ) {
-    Text(content.name, style = MaterialTheme.typography.titleMedium)
+    Text(content.path, style = MaterialTheme.typography.titleMedium)
     Text(
-      "%.2f KB".format(blob.size.toFloat() / 1_000),
+      "%.2f KB".format(size / 1_000),
       modifier = Modifier.paddingFromBaseline(top = 20.dp),
       style = MaterialTheme.typography.bodySmall,
     )

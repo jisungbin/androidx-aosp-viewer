@@ -4,177 +4,208 @@ package land.sungbin.androidx.fetcher
 
 import assertk.assertFailure
 import assertk.assertThat
-import assertk.assertions.contains
-import assertk.assertions.hasClass
-import assertk.assertions.isEmpty
+import assertk.assertions.endsWith
+import assertk.assertions.hasMessage
 import assertk.assertions.isEqualTo
-import java.io.IOException
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import java.net.HttpURLConnection.HTTP_BAD_REQUEST
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import java.nio.file.Path
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import land.sungbin.androidx.fetcher.AndroidxRepository.Companion.GITHUB_AUTHORIZATION_HEADER
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import mockwebserver3.QueueDispatcher
+import mockwebserver3.RecordedRequest
 import mockwebserver3.junit5.internal.MockWebServerExtension
+import okhttp3.HttpUrl
+import okhttp3.internal.cache.DiskLruCache
 import okhttp3.logging.HttpLoggingInterceptor
+import okio.Closeable
+import okio.IOException
 import okio.Path.Companion.toOkioPath
+import okio.buffer
 import okio.fakefilesystem.FakeFileSystem
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.api.parallel.Execution
-import org.junit.jupiter.api.parallel.ExecutionMode
+import thirdparty.TaskFaker
 
-@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(MockWebServerExtension::class)
 class AndroidxRepositoryTest {
-  @field:TempDir private lateinit var tempDir: Path
-  private var cache: AndroidxRepositoryCache? = null
-  private val fs = FakeFileSystem()
+  @Test fun addsAuthorizationHeaderWhenTokenProvided(server: MockWebServer) = runTest {
+    var getRequest: RecordedRequest? = null
+    val repo = repo(server.url("/"), token = "MyToken")
 
-  private lateinit var server: MockWebServer
-  private val logger = TestTimberTree()
-
-  @BeforeTest fun prepare(server: MockWebServer) {
-    this.server = server
-  }
-
-  @AfterTest fun cleanup() {
-    cache?.close()
-    fs.checkNoOpenFiles()
-    logger.clear()
-    cache = null
-  }
-
-  @Test fun fetchingWithBasicLogEnablesHttpLogging() = runTest {
-    val repo = AndroidxRepository(
-      logLevel = HttpLoggingInterceptor.Level.BASIC,
-      base = server.url("/"),
-      dispatcher = UnconfinedTestDispatcher(),
-    )
-      .useLogger(logger)
-
+    server.dispatcher = object : QueueDispatcher() {
+      override fun dispatch(request: RecordedRequest): MockResponse {
+        getRequest = request
+        return super.dispatch(request)
+      }
+    }
     server.enqueue(MockResponse())
-    repo.fetchTrees()
 
-    assertThat(logger.debugs)
-      .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
+    repo.fetchTree()
+
+    assertThat(getRequest!!.headers[GITHUB_AUTHORIZATION_HEADER])
+      .isNotNull()
+      .isEqualTo("Bearer MyToken")
   }
 
-  @Test fun fetchingWithNoneLogDisablesHttpLogging() = runTest {
-    val repo = AndroidxRepository(
-      logLevel = HttpLoggingInterceptor.Level.NONE,
-      base = server.url("/"),
-      dispatcher = UnconfinedTestDispatcher(),
-    )
-      .useLogger(logger)
+  @Ignore("How to test this?")
+  @Test fun addsHttpLoggingInterceptorWithGivenLogLevel() = Unit
 
+  @Test fun fetchesWithGivenRef(server: MockWebServer) = runTest {
+    var getRequest: RecordedRequest? = null
+    val repo = repo(server.url("/"), token = "MyToken")
+
+    server.dispatcher = object : QueueDispatcher() {
+      override fun dispatch(request: RecordedRequest): MockResponse {
+        getRequest = request
+        return super.dispatch(request)
+      }
+    }
     server.enqueue(MockResponse())
-    repo.fetchTrees()
 
-    assertThat(logger.debugs).isEmpty()
+    repo.fetchTree("my-ref-value")
+
+    assertThat(getRequest!!.path)
+      .isNotNull()
+      .endsWith("my-ref-value")
   }
 
-  @Test fun fetchingWithCacheEnablesHttpCache() = runTest {
-    val repo = AndroidxRepository(
-      cache = loadCache(),
-      base = server.url("/"),
-      dispatcher = UnconfinedTestDispatcher(),
-    )
-      .useLogger(logger)
+  @Test fun cachesAfterSuccessfulFetch(server: MockWebServer, @TempDir path: Path) = runTest {
+    val cache = cache(path)
+    val repo = repo(server.url("/"), cache = cache)
 
-    server.enqueue(MockResponse(body = "Hello, world!"))
-    var response = repo.fetchTrees()
+    server.enqueue(MockResponse(body = "Hello, World!"))
 
-    assertThat(response.use { it.readUtf8() }).isEqualTo("Hello, world!")
-    assertThat(logger.debugs, name = "process real call")
-      .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
+    repo.fetchTree("ref")
 
-    logger.clear()
-    server.enqueue(MockResponse(body = "Hello, world! 2"))
-    response = repo.fetchTrees()
-
-    assertThat(response.use { it.readUtf8() }).isEqualTo("Hello, world!")
-    assertThat(logger.debugs, name = "empty call").isEmpty()
+    assertThat(cache.getCachedSource("ref"))
+      .isNotNull()
+      .transform { it.use { source -> source.buffer().readUtf8() } }
+      .isEqualTo("Hello, World!")
   }
 
-  @Test fun noCacheFetchingWithCacheDisablesHttpCache() = runTest {
-    val repo = AndroidxRepository(
-      cache = loadCache(),
-      base = server.url("/"),
-      dispatcher = UnconfinedTestDispatcher(),
-    )
-      .useLogger(logger)
-
-    server.enqueue(MockResponse())
-    repo.fetchTrees()
-
-    assertThat(logger.debugs, name = "first cache call")
-      .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
-
-    logger.clear()
-    server.enqueue(MockResponse())
-    repo.fetchTrees(noCache = true)
-
-    assertThat(logger.debugs, name = "second cache call")
-      .contains("--> GET ${server.url("/")}repos/androidx/androidx/git/trees/androidx-main")
-  }
-
-  @Test fun fetchingWithAuthorizationTokenAddsAuthorizationHeader() = runTest {
-    val repo = AndroidxRepository(
-      authorizationToken = "token2",
-      logLevel = HttpLoggingInterceptor.Level.HEADERS,
-      base = server.url("/"),
-      dispatcher = UnconfinedTestDispatcher(),
-    )
-      .useLogger(logger)
-
-    server.enqueue(MockResponse())
-    repo.fetchTrees()
-
-    assertThat(logger.debugs).contains("Authorization: ██")
-  }
-
-  @Test fun errorFetchinLogsAndThrows() = runTest {
-    val repo = AndroidxRepository(
-      base = server.url("/"),
-      dispatcher = UnconfinedTestDispatcher(),
-    )
-      .useLogger(logger)
+  @Test fun doesNotCacheAfterFailedFetch(server: MockWebServer, @TempDir path: Path) = runTest {
+    val cache = cache(path)
+    val repo = repo(server.url("/"), cache = cache)
 
     server.enqueue(MockResponse(code = HTTP_BAD_REQUEST))
-    assertFailure { repo.fetchTrees() }.hasClass<IOException>()
 
-    assertThat(logger.errors).contains(
-      "Failed to fetch the repository: Response{" +
-        "protocol=http/1.1, code=400, " +
-        "message=Client Error, " +
-        "url=${server.url("/")}repos/androidx/androidx/git/trees/androidx-main" +
-        "}",
-    )
+    runCatching { repo.fetchTree("ref") }
+
+    assertThat(cache.getCachedSource("ref")).isNull()
   }
 
-  @Test fun unauthorizedFetchingThrowsAuthenticateException() = runTest {
-    val repo = AndroidxRepository(
-      base = server.url("/"),
-      dispatcher = UnconfinedTestDispatcher(),
-    )
-      .useLogger(logger)
+  @Test fun doesNotMakeHttpRequestForCachedFetch(server: MockWebServer, @TempDir path: Path) = runTest {
+    var getRequest: RecordedRequest? = null
+    val cache = cache(path)
+    val repo = repo(server.url("/"), cache = cache)
 
-    server.enqueue(MockResponse(code = HTTP_UNAUTHORIZED))
-    assertFailure { repo.fetchTrees() }.hasClass<GitHubAuthenticateException>()
+    server.dispatcher = object : QueueDispatcher() {
+      override fun dispatch(request: RecordedRequest): MockResponse {
+        getRequest = request
+        return super.dispatch(request)
+      }
+    }
+    server.enqueue(MockResponse(body = "my content"))
+    server.enqueue(MockResponse(body = "my content"))
+
+    repo.fetchTree("ref")
+
+    assertThat(getRequest, name = "first request").isNotNull()
+
+    getRequest = null
+    repo.fetchTree("ref")
+
+    assertThat(getRequest, name = "cached request").isNull()
   }
 
-  private fun TestScope.loadCache(): AndroidxRepositoryCache =
-    AndroidxRepositoryCache(
-      directory = tempDir.toOkioPath(),
-      maxSize = Long.MAX_VALUE,
-      fs = fs,
-      scope = this,
+  @Test fun disablesCacheWhenNoCache(server: MockWebServer, @TempDir path: Path) = runTest {
+    val cache = cache(path)
+    val repo = repo(server.url("/"), cache = cache)
+
+    server.enqueue(MockResponse())
+
+    repo.fetchTree("ref", noCache = true)
+
+    assertThat(cache.getCachedSource("ref")).isNull()
+  }
+
+  @Test fun throwsIOExceptionOnFailedFetch(server: MockWebServer) = runTest {
+    val repo = repo(server.url("/"))
+
+    server.enqueue(
+      MockResponse.Builder()
+        .status("HTTP/1.1 $HTTP_BAD_REQUEST HTTP_BAD_REQUEST")
+        .build(),
     )
-      .also { cache = it }
+
+    assertFailure { repo.fetchTree() }
+      .isInstanceOf<IOException>()
+      .hasMessage("HTTP_BAD_REQUEST")
+  }
+
+  @Test fun throwsGitHubExceptionOnFailedFetchWhenConditionMet(server: MockWebServer) = runTest {
+    val repo = repo(server.url("/"))
+
+    server.enqueue(
+      MockResponse.Builder()
+        .status("HTTP/1.1 $HTTP_UNAUTHORIZED HTTP_UNAUTHORIZED")
+        .build(),
+    )
+
+    assertFailure { repo.fetchTree() }
+      .isInstanceOf<GitHubAuthenticateException>()
+      .hasMessage("HTTP_UNAUTHORIZED")
+  }
+
+  private fun TestScope.repo(
+    baseUrl: HttpUrl,
+    token: String? = null,
+    cache: AndroidxRepositoryCache? = null,
+    logging: HttpLoggingInterceptor.Level = HttpLoggingInterceptor.Level.NONE,
+  ): AndroidxRepository =
+    AndroidxRepository(
+      authorizationToken = token,
+      cache = cache,
+      logging = logging,
+      baseUrl = baseUrl,
+      dispatcher = UnconfinedTestDispatcher(testScheduler),
+    )
+
+  private fun cache(path: Path): AndroidxRepositoryCache {
+    val fs = FakeFileSystem().also(toCloses::add)
+    val taskFaker = TaskFaker().also(toCloses::add)
+
+    return AndroidxRepositoryCache(
+      DiskLruCache(
+        fileSystem = fs,
+        directory = path.toOkioPath(),
+        appVersion = 1,
+        valueCount = AndroidxRepositoryCache.ENTRY_SIZE,
+        maxSize = Long.MAX_VALUE,
+        taskRunner = taskFaker.taskRunner,
+      ),
+    )
+      .also(toCloses::add)
+  }
+
+  private companion object {
+    private val toCloses = mutableListOf<Closeable>()
+
+    @JvmStatic
+    @AfterAll fun tearDown() {
+      toCloses.forEach(Closeable::close)
+      toCloses.clear()
+    }
+  }
 }

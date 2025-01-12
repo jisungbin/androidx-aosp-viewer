@@ -50,7 +50,7 @@ import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 
   sealed interface Event : CircuitUiEvent {
     @Poko class Fetch(val parent: GitContent?, val noCache: Boolean = false) : Event
-    @Poko class OpenBlob(val content: GitContent) : Event
+    @Poko class OpenBlob(val content: GitContent, val noCache: Boolean = false) : Event
     @Poko class ToggleFavorite(val content: GitContent) : Event
   }
 }
@@ -59,8 +59,8 @@ fun CodeScreen.SharedState.assignAsTree(contents: List<GitContent>) {
   assign(GitItem.Tree(contents.toImmutableList()))
 }
 
-fun CodeScreen.SharedState.assignAsBlob(content: GitContent) {
-  assign(GitItem.Blob(content))
+fun CodeScreen.SharedState.assignAsBlob(raw: String, content: GitContent) {
+  assign(GitItem.Blob(raw, content))
 }
 
 @CircuitInject(CodeScreen::class, AppScope::class)
@@ -92,7 +92,7 @@ fun CodeScreen.SharedState.assignAsBlob(content: GitContent) {
         )
       }
       is GitItem.Blob -> {
-        Text(item.content.blob!!.utf8())
+        Text(item.raw)
       }
     }
   }

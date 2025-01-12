@@ -44,4 +44,5 @@ include(
   ":app",
   ":androidx-fetcher",
   ":thirdparty:timber",
+  ":thirdparty:okhttp-taskfaker",
 )

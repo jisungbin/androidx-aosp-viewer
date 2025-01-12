@@ -3,39 +3,43 @@
 package land.sungbin.androidx.fetcher
 
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
-import okio.ByteString
 
 @Immutable public data class GitContent(
-  public val name: String,
+  public val path: String,
   public val url: String,
-  public val blob: ByteString?,
+  public val size: Long?,
   public val parent: GitContent? = null,
 ) {
   init {
-    require(name.isNotEmpty()) { "name should not be empty" }
+    require(path.isNotEmpty()) { "path should not be empty" }
     require(url.isNotEmpty()) { "url should not be empty" }
   }
 }
 
+public val GitContent.name: String
+  inline get() = path
+
 public val GitContent.sha: String
-  get() = url.substringAfterLast('/', missingDelimiterValue = AndroidxRepository.HOME_REF)
+  get() =
+    url
+      .substringAfterLast('/', missingDelimiterValue = AndroidxRepository.HOME_REF)
+      .ifEmpty { AndroidxRepository.HOME_REF }
 
 public val GitContent.isFile: Boolean
-  get() = blob != null
+  get() = size != null
 
 public val GitContent.isDirectory: Boolean
-  get() = blob == null
+  get() = size == null
 
 public val GitContent.isRoot: Boolean
   get() = parent == null
 
-@Stable public val GitContent.paths: String
+public val GitContent.paths: String
   get() = buildString {
     var parent = parent
     while (parent != null) {
-      insert(0, "${parent.name}/")
+      insert(0, "${parent.path}/")
       parent = parent.parent
     }
-    append(name)
+    append(path)
   }

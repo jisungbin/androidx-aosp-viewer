@@ -2,377 +2,336 @@
 // SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
+import assertk.all
 import assertk.assertFailure
 import assertk.assertThat
-import assertk.assertions.contains
 import assertk.assertions.containsExactly
+import assertk.assertions.containsOnly
 import assertk.assertions.hasMessage
-import java.net.HttpURLConnection.HTTP_NOT_FOUND
-import kotlin.test.AfterTest
+import assertk.assertions.isEqualTo
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isSameInstanceAs
+import assertk.assertions.isTrue
+import assertk.assertions.prop
+import assertk.assertions.single
 import kotlin.test.Test
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
-import mockwebserver3.RecordedRequest
 import mockwebserver3.junit5.internal.MockWebServerExtension
-import okio.Buffer
-import okio.ByteString.Companion.encodeUtf8
-import org.intellij.lang.annotations.Language
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okio.ByteString.Companion.encode
 import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(MockWebServerExtension::class)
 class AndroidxRepositoryReaderTest {
-  private val logger = TestTimberTree()
-  private val repo = AndroidxRepository(dispatcher = UnconfinedTestDispatcher())
-  private val reader = AndroidxRepositoryReader(repo).useLogger(logger)
+  @Test fun setsTreeParentToGivenParent() {
+    val reader = AndroidxRepositoryReader(repo())
+    val parent = GitContent("parent path", "parent url", size = null)
 
-  @AfterTest fun cleanup() {
-    logger.clear()
-  }
-
-  @Test fun truncatedTreeMakesWarning() = runTest {
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "tree": [
-          {
-            "path": ".github",
-            "mode": "040000",
-            "type": "tree",
-            "sha": "0099cfc294dfce6ff0b96b344aec8ed18221389e",
-            "url": "https://api.github.com/repos/androidx/androidx/git/trees/0099cfc294dfce6ff0b96b344aec8ed18221389e"
-          }
-        ],
-        "truncated": true
-      }
-    """.trimIndent()
-
-    reader.read(Buffer().apply { writeUtf8(source) })
-
-    assertThat(logger.warns).contains(
-      "The repository has too many files to read. " +
-        "Some files may not be included in the list.",
-    )
-  }
-
-  @Test fun noRootTreeMakesError() = runTest {
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "truncated": false
-      }
-    """.trimIndent()
-
-    reader.read(Buffer().apply { writeUtf8(source) })
-
-    assertThat(logger.errors).contains(
-      "No tree object found in the repository. " +
-        "Please check the given source: $source",
-    )
-  }
-
-  @Test fun incompleteTreeMakesWarning() = runTest {
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "tree": [
-          {
-            "path": "tracing",
-            "mode": "040000",
-            "sha": "319c54d1ca15c9d3e3574d839a1f58b9a49b5e1f"
-          }
-        ],
-        "truncated": false
-      }
-    """.trimIndent()
-
-    reader.read(Buffer().apply { writeUtf8(source) })
-
-    assertThat(logger.warns).contains(
-      "Required fields are missing in the tree object. " +
-        "(path: tracing, type: null, url: null)",
-    )
-  }
-
-  @Test fun incompleteBlobMakesException(server: MockWebServer) = runTest {
-    val blobUrl = server.url("blob.txt")
-
-    server.dispatcher = object : Dispatcher() {
-      override fun dispatch(request: RecordedRequest) = MockResponse(
-        //language=json
-        body = """
-        {
-          "sha": "somesha",
-          "node_id": "somenodeid",
-          "size": 10000,
-          "url": "https://api.github.com/repos/androidx/androidx/git/blobs/somefile",
-          "encoding": "base64"
-        }
-        """.trimIndent(),
-      )
-    }
-
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "tree": [
-           {
-            "path": "blob",
-            "mode": "040000",
-            "type": "blob",
-            "sha": "0099cfc294dfce6ff0b96b344aec8ed18221389e",
-            "url": "$blobUrl"
-          }
-        ],
-        "truncated": false
-      }
-    """.trimIndent()
-
-    assertFailure { reader.read(Buffer().apply { writeUtf8(source) }) }
-      .hasMessage("The content of the blob is missing.")
-
-    assertThat(logger.warns).contains("The content of the blob is missing. Please check the given source: ")
-  }
-
-  @Test fun unsupportedBlobMakesException(server: MockWebServer) = runTest {
-    val blobUrl = server.url("blob.txt")
-
-    server.dispatcher = object : Dispatcher() {
-      override fun dispatch(request: RecordedRequest) = MockResponse(
-        //language=json
-        body = """
-        {
-          "sha": "somesha",
-          "node_id": "somenodeid",
-          "size": 10000,
-          "url": "https://api.github.com/repos/androidx/androidx/git/blobs/somefile",
-          "content": "",
-          "encoding": "utf8"
-        }
-        """.trimIndent(),
-      )
-    }
-
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "tree": [
-           {
-            "path": "blob",
-            "mode": "040000",
-            "type": "blob",
-            "sha": "0099cfc294dfce6ff0b96b344aec8ed18221389e",
-            "url": "$blobUrl"
-          }
-        ],
-        "truncated": false
-      }
-    """.trimIndent()
-
-    assertFailure { reader.read(Buffer().apply { writeUtf8(source) }) }
-      .hasMessage("The encoding of the blob is wrong.")
-
-    assertThat(logger.warns).contains("Unsupported encoding: utf8")
-  }
-
-  @Test fun gitTreeParsedWithTrees() = runTest {
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "tree": [
-          {
-            "path": "tracing",
-            "mode": "040000",
-            "type": "tree",
-            "sha": "319c54d1ca15c9d3e3574d839a1f58b9a49b5e1f",
-            "url": "https://api.github.com/repos/androidx/androidx/git/trees/319c54d1ca15c9d3e3574d839a1f58b9a49b5e1f"
-          },
-          {
-            "path": "transition",
-            "mode": "040000",
-            "type": "tree",
-            "sha": "2efb04256a8de6b2f54e009ee01162fad848d76c",
-            "url": "https://api.github.com/repos/androidx/androidx/git/trees/2efb04256a8de6b2f54e009ee01162fad848d76c"
-          }
-        ],
-        "truncated": false
-      }
-    """.trimIndent()
-
-    assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(
-        name = "tracing",
-        url = "https://api.github.com/repos/androidx/androidx/git/trees/319c54d1ca15c9d3e3574d839a1f58b9a49b5e1f",
-        blob = null,
-      ),
-      GitContent(
-        name = "transition",
-        url = "https://api.github.com/repos/androidx/androidx/git/trees/2efb04256a8de6b2f54e009ee01162fad848d76c",
-        blob = null,
-      ),
-    )
-  }
-
-  @Test fun gitTreeParsedWithBlobsInSortedOrder(server: MockWebServer) = runTest {
-    val helloBlobUrl = server.url("blob/hello.txt")
-    val worldBlobUrl = server.url("blob/world.txt")
-    val byeBlobUrl = server.url("blob/bye.txt")
-    val friendBlobUrl = server.url("blob/friend.txt")
-
-    server.dispatcher = object : Dispatcher() {
-      override fun dispatch(request: RecordedRequest) = when (request.requestUrl) {
-        helloBlobUrl -> MockResponse(body = makeBlobJson("Hello!"))
-        worldBlobUrl -> MockResponse(body = makeBlobJson("World!"))
-        byeBlobUrl -> MockResponse(body = makeBlobJson("Bye!"))
-        friendBlobUrl -> MockResponse(body = makeBlobJson("Friend!"))
-        else -> MockResponse(code = HTTP_NOT_FOUND)
-      }
-    }
-
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "tree": [
-           {
-            "path": "hello",
-            "mode": "040000",
-            "type": "blob",
-            "sha": "0099cfc294dfce6ff0b96b344aec8ed18221389e",
-            "url": "$helloBlobUrl"
-          },
-          {
-            "path": "world",
-            "mode": "100644",
-            "type": "blob",
-            "sha": "9b7bb83d3f4ceeb7162fcec0b2c6f8ee4fb3bfec",
-            "url": "$worldBlobUrl"
-          },
-          {
-            "path": "bye",
-            "mode": "100644",
-            "type": "blob",
-            "sha": "9b7bb83d3f4ceeb7162fcec0b2c6f8ee4fb3bfec",
-            "url": "$byeBlobUrl"
-          },
-          {
-            "path": "friend",
-            "mode": "100644",
-            "type": "blob",
-            "sha": "9b7bb83d3f4ceeb7162fcec0b2c6f8ee4fb3bfec",
-            "url": "$friendBlobUrl"
-          }
-        ],
-        "truncated": false
-      }
-    """.trimIndent()
-
-    assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(name = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
-      GitContent(name = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
-      GitContent(name = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
-      GitContent(name = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
-    )
-  }
-
-  @Test fun gitTreeParsedWithMixedInSortedOrder(server: MockWebServer) = runTest {
-    val helloBlobUrl = server.url("blob/hello.txt")
-    val worldBlobUrl = server.url("blob/world.txt")
-    val byeBlobUrl = server.url("blob/bye.txt")
-    val friendBlobUrl = server.url("blob/friend.txt")
-
-    server.dispatcher = object : Dispatcher() {
-      override fun dispatch(request: RecordedRequest) = when (request.requestUrl) {
-        helloBlobUrl -> MockResponse(body = makeBlobJson("Hello!"))
-        worldBlobUrl -> MockResponse(body = makeBlobJson("World!"))
-        byeBlobUrl -> MockResponse(body = makeBlobJson("Bye!"))
-        friendBlobUrl -> MockResponse(body = makeBlobJson("Friend!"))
-        else -> MockResponse(code = HTTP_NOT_FOUND)
-      }
-    }
-
-    @Language("json") val source = """
-      {
-        "sha": "85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "url": "https://api.github.com/repos/androidx/androidx/git/trees/85d3f8158b2f9b26cc014a5c9c8793b188544d1f",
-        "tree": [
-           {
-            "path": "hello",
-            "mode": "040000",
-            "type": "blob",
-            "sha": "0099cfc294dfce6ff0b96b344aec8ed18221389e",
-            "url": "$helloBlobUrl"
-          },
-          {
-            "path": "world",
-            "mode": "100644",
-            "type": "blob",
-            "sha": "9b7bb83d3f4ceeb7162fcec0b2c6f8ee4fb3bfec",
-            "url": "$worldBlobUrl"
-          },
-          {
-            "path": "tracing",
-            "mode": "040000",
-            "type": "tree",
-            "sha": "319c54d1ca15c9d3e3574d839a1f58b9a49b5e1f",
-            "url": "url"
-          },
-          {
-            "path": "transition",
-            "mode": "040000",
-            "type": "tree",
-            "sha": "2efb04256a8de6b2f54e009ee01162fad848d76c",
-            "url": "url"
-          },
-          {
-            "path": "bye",
-            "mode": "100644",
-            "type": "blob",
-            "sha": "9b7bb83d3f4ceeb7162fcec0b2c6f8ee4fb3bfec",
-            "url": "$byeBlobUrl"
-          },
-          {
-            "path": "friend",
-            "mode": "100644",
-            "type": "blob",
-            "sha": "9b7bb83d3f4ceeb7162fcec0b2c6f8ee4fb3bfec",
-            "url": "$friendBlobUrl"
-          }
-        ],
-        "truncated": false
-      }
-    """.trimIndent()
-
-    assertThat(reader.read(Buffer().apply { writeUtf8(source) })).containsExactly(
-      GitContent(name = "bye", url = byeBlobUrl.toString(), blob = "Bye!".encodeUtf8()),
-      GitContent(name = "friend", url = friendBlobUrl.toString(), blob = "Friend!".encodeUtf8()),
-      GitContent(name = "hello", url = helloBlobUrl.toString(), blob = "Hello!".encodeUtf8()),
-      GitContent(name = "world", url = worldBlobUrl.toString(), blob = "World!".encodeUtf8()),
-      GitContent(name = "tracing", url = "url", blob = null),
-      GitContent(name = "transition", url = "url", blob = null),
-    )
-  }
-
-  private fun makeBlobJson(content: String): String {
-    val encoded = content.encodeUtf8().base64()
     // language=json
-    return """
-      {
-        "sha": "somesha",
-        "node_id": "somenodeid",
-        "size": 10000,
-        "url": "https://api.github.com/repos/androidx/androidx/git/blobs/somefile",
-        "content": "$encoded",
-        "encoding": "base64"
-      }
+    val json = """
+{
+  "sha": "aaaaaa",
+  "url": "https://example.com/",
+  "tree": [
+    {
+      "path": ".github",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa",
+      "url": "https://example.com/"
+    },
+    {
+      "path": ".github2",
+      "mode": "00000",
+      "type": "tree",
+      "sha": "aaaaab",
+      "url": "https://example.com/"
+    },
+    {
+      "path": ".github3",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaac",
+      "url": "https://example.com/"
+    }
+  ],
+  "truncated": false
+}
     """.trimIndent()
+
+    val result = reader.readTree(bufferOf(json), parent)
+
+    assertThat(result.map(GitContent::parent)).containsOnly(parent)
   }
+
+  @Test fun closesSourceAfterParsing() {
+    val reader = AndroidxRepositoryReader(repo())
+
+    // language=json
+    val json = """
+{
+  "sha": "aaaaaa",
+  "url": "https://example.com/",
+  "tree": [
+    {
+      "path": ".github",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa",
+      "url": "https://example.com/"
+    }
+  ],
+  "truncated": false
+}
+    """.trimIndent()
+    val source = bufferOf(json)
+
+    reader.readTree(source)
+
+    assertThat(source.exhausted()).isTrue()
+  }
+
+  @Test fun parsesTruncatedTree() {
+    val reader = AndroidxRepositoryReader(repo())
+
+    // language=json
+    val json = """
+{
+  "sha": "aaaaaa",
+  "url": "https://example.com/",
+  "tree": [
+    {
+      "path": ".github",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa",
+      "url": "https://example.com/"
+    }
+  ],
+  "truncated": true
+}
+    """.trimIndent()
+
+    assertThat(reader.readTree(bufferOf(json)))
+      .all {
+        prop(AndroidxRepositoryTree::truncated).isTrue()
+        single().isEqualTo(GitContent(".github", "https://example.com/", size = null))
+      }
+  }
+
+  @Test fun parsesEmptyTree() {
+    val reader = AndroidxRepositoryReader(repo())
+
+    // language=json
+    val json = """
+{
+  "sha": "aaaaaa",
+  "url": "https://example.com/",
+  "tree": [],
+  "truncated": false
+}
+    """.trimIndent()
+
+    assertThat(reader.readTree(bufferOf(json))).isEqualTo(AndroidxRepositoryTree.Empty)
+  }
+
+  @Test fun parsesNullTree() {
+    val reader = AndroidxRepositoryReader(repo())
+
+    // language=json
+    val json = """
+{
+  "sha": "aaaaaa",
+  "url": "https://example.com/",
+  "truncated": false
+}
+    """.trimIndent()
+
+    assertThat(reader.readTree(bufferOf(json))).isSameInstanceAs(AndroidxRepositoryTree.Empty)
+  }
+
+  @Test fun sortsParsedTreeFoldersFirstAndAlphabetically() {
+    val reader = AndroidxRepositoryReader(repo())
+
+    // language=json
+    val json = """
+{
+  "sha": "aaaaaa",
+  "url": "https://example.com/",
+  "tree": [
+    {
+      "path": "fileB.txt",
+      "mode": "000000",
+      "type": "blob",
+      "sha": "aaaaad",
+      "size": 1,
+      "url": "https://example.com/fileB.txt"
+    },
+     {
+      "path": "folderA",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa",
+      "url": "https://example.com/folderA"
+    },
+    {
+      "path": "folderB",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaab",
+      "url": "https://example.com/folderB"
+    },
+    {
+      "path": "fileA.txt",
+      "mode": "000000",
+      "type": "blob",
+      "sha": "aaaaac",
+      "size": 1,
+      "url": "https://example.com/fileA.txt"
+    }
+  ],
+  "truncated": false
+}
+    """.trimIndent()
+
+    val result = reader.readTree(bufferOf(json))
+
+    assertThat(result)
+      .containsExactly(
+        GitContent("folderA", "https://example.com/folderA", size = null),
+        GitContent("folderB", "https://example.com/folderB", size = null),
+        GitContent("fileA.txt", "https://example.com/fileA.txt", size = 1),
+        GitContent("fileB.txt", "https://example.com/fileB.txt", size = 1),
+      )
+  }
+
+  @Test fun parsesOnlyContentWithRequiredFields() {
+    val reader = AndroidxRepositoryReader(repo())
+
+    // language=json
+    val json = """
+{
+  "sha": "aaaaaa",
+  "url": "https://example.com/",
+  "tree": [
+    {
+      "path": "a",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa",
+      "url": "https://example.com/a"
+    },
+    {
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa",
+      "url": "https://example.com/b"
+    },
+    {
+      "path": "c",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa"
+    },
+    {
+      "path": "d",
+      "mode": "000000",
+      "type": "tree",
+      "sha": "aaaaaa",
+      "url": "https://example.com/d"
+    }
+  ],
+  "truncated": false
+}
+    """.trimIndent()
+
+    val result = reader.readTree(bufferOf(json))
+
+    assertThat(result)
+      .containsExactly(
+        GitContent("a", "https://example.com/a", size = null),
+        GitContent("d", "https://example.com/d", size = null),
+      )
+  }
+
+  @Test fun parsesBlobContent(server: MockWebServer) = runTest {
+    val reader = AndroidxRepositoryReader(repo(server.url("/")))
+    val text = "Hello, world!"
+
+    val json = """
+{
+  "sha": "a",
+  "node_id": "a",
+  "size": 1,
+  "url": "https://example.com",
+  "content": "${text.encode().base64()}",
+  "encoding": "base64"
+}
+    """.trimIndent()
+
+    server.enqueue(MockResponse(body = json))
+    val result = reader.readBlob(server.url("/").toString())
+
+    assertThat(result.utf8()).isEqualTo(text)
+  }
+
+  @Test fun throwsExceptionWhenBlobDataMissing(server: MockWebServer) = runTest {
+    val reader = AndroidxRepositoryReader(repo(server.url("/")))
+
+    // language=json
+    val json = """
+{
+  "sha": "a",
+  "node_id": "a",
+  "size": 1,
+  "url": "https://example.com",
+  "encoding": "base64"
+}
+    """.trimIndent()
+
+    server.enqueue(MockResponse(body = json))
+
+    assertFailure { reader.readBlob(server.url("/").toString()) }
+      .isInstanceOf<IllegalStateException>()
+      .hasMessage("The content of the blob is missing.")
+  }
+
+  @Test fun throwsExceptionWhenBlobNotBase64(server: MockWebServer) = runTest {
+    val reader = AndroidxRepositoryReader(repo(server.url("/")))
+
+    // language=json
+    val json = """
+{
+  "sha": "a",
+  "node_id": "a",
+  "size": 1,
+  "url": "https://example.com",
+  "content": "a",
+  "encoding": "txt"
+}
+    """.trimIndent()
+
+    server.enqueue(MockResponse(body = json))
+
+    assertFailure { reader.readBlob(server.url("/").toString()) }
+      .isInstanceOf<IllegalStateException>()
+      .hasMessage("The encoding of the blob is unsupported.")
+  }
+
+  private fun repo(): AndroidxRepository =
+    AndroidxRepository(
+      baseUrl = "https://example.com".toHttpUrl(),
+      dispatcher = UnconfinedTestDispatcher(),
+    )
+
+  private fun TestScope.repo(baseUrl: HttpUrl): AndroidxRepository =
+    AndroidxRepository(
+      baseUrl = baseUrl,
+      dispatcher = UnconfinedTestDispatcher(testScheduler),
+    )
 }

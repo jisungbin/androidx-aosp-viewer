@@ -10,13 +10,18 @@ import kotlinx.collections.immutable.ImmutableList
   @Immutable
   @JvmInline public value class Tree(public val contents: ImmutableList<GitContent>) : GitItem
 
-  @Immutable
-  @JvmInline public value class Blob(public val content: GitContent) : GitItem {
+  @Immutable public data class Blob(
+    public val raw: String,
+    public val content: GitContent,
+  ) : GitItem {
     init {
-      requireNotNull(content.blob) { "blob should not be null" }
+      requireNotNull(content.size) { "size should not be null" }
     }
   }
 }
+
+public val GitItem.Blob.extension: String
+  get() = content.path.substringAfterLast('.', missingDelimiterValue = "")
 
 public fun GitItem.firstContentOrNull(): GitContent? =
   if (isBlob()) content else contents.firstOrNull()

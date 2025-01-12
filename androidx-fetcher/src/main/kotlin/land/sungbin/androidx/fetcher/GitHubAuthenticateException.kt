@@ -14,7 +14,7 @@ import okhttp3.Response
   override val message: String,
 ) : IOException() {
   internal companion object {
-    fun parse(response: Response): GitHubAuthenticateException? {
+    internal fun parse(response: Response): GitHubAuthenticateException? {
       // https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api?apiVersion=2022-11-28#failed-login-limit
       if (
         response.code == HTTP_UNAUTHORIZED ||

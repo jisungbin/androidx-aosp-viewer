@@ -2,70 +2,83 @@
 // SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.fetcher
 
-import com.mayakapps.kache.OkioFileKache
-import dev.drewhamilton.poko.Poko
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import okio.ByteString
+import java.io.IOException
+import okhttp3.internal.cache.DiskLruCache
+import okhttp3.internal.concurrent.TaskRunner
+import okhttp3.internal.concurrent.TaskRunner.RealBackend
+import okio.BufferedSource
 import okio.Closeable
 import okio.FileSystem
 import okio.Path
 import okio.Source
+import okio.buffer
 import org.jetbrains.annotations.VisibleForTesting
 
 // OkHttp's built-in cache works based on Cache-Control.
 // But I want semi-persistent cache that is independent of Cache-Control.
-@Poko public class AndroidxRepositoryCache public constructor(
-  public val cache: OkioFileKache,
-  @VisibleForTesting internal val fs: FileSystem = FileSystem.SYSTEM,
+@JvmInline public value class AndroidxRepositoryCache @VisibleForTesting internal constructor(
+  @VisibleForTesting internal val cache: DiskLruCache,
 ) : Closeable {
+  public constructor(directory: Path, maxSize: Long) :
+    this(
+      DiskLruCache(
+        fileSystem = FileSystem.SYSTEM,
+        directory = directory,
+        appVersion = CACHE_VERSION,
+        valueCount = ENTRY_SIZE,
+        maxSize = maxSize,
+        taskRunner = taskRunner(),
+      ),
+    )
+
   init {
-    require(currentFileSystem() === fs) { "FileSystem must be the same as the one used by the cache." }
+    cache.initialize()
   }
 
-  public constructor(
-    directory: Path,
-    maxSize: Long,
-    fs: FileSystem = FileSystem.SYSTEM,
-    scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-  ) : this(
-    runBlocking {
-      OkioFileKache(directory, maxSize) {
-        fileSystem = fs
-        creationScope = scope
-        cacheVersion = CACHE_VERSION
-      }
-    },
-    fs,
-  )
+  internal fun getCachedSource(ref: String): Source? =
+    cache[ref]?.getSource(ENTRY_INDEX)
 
-  internal suspend fun getCachedSource(ref: String): Source? =
-    cache.get(ref)?.let(fs::source)
+  internal fun putSource(ref: String, source: BufferedSource): Boolean {
+    val snapshot = source.apply { request(Long.MAX_VALUE) }.buffer.snapshot()
+    if (snapshot.size == 0) return false
+    var editor: DiskLruCache.Editor? = null
 
-  internal suspend fun upsertSource(ref: String, source: ByteString): Boolean {
-    val result = cache.put(ref) { path ->
+    return try {
+      editor = cache.edit(ref) ?: return false
+      editor.newSink(ENTRY_INDEX).buffer().use { it.write(snapshot) }
+      editor.commit()
+      true
+    } catch (_: IOException) {
       try {
-        fs.write(path) { write(source) }
-        true
-      } catch (_: Exception) {
-        false
+        editor?.abort()
+      } catch (_: IOException) {
       }
+      false
     }
-    return result != null
   }
+
+  internal fun evictAll(): Boolean =
+    try {
+      cache.evictAll()
+      true
+    } catch (_: IOException) {
+      false
+    }
 
   override fun close() {
-    runBlocking { cache.close() }
+    cache.close()
   }
 
-  private fun currentFileSystem(): FileSystem =
-    OkioFileKache::class.java
-      .getDeclaredField("fileSystem")
-      .apply { isAccessible = true }
-      .get(cache) as FileSystem
-
   public companion object {
-    public const val CACHE_VERSION: Int = 1
+    private const val ENTRY_INDEX = 0
+    @VisibleForTesting internal const val ENTRY_SIZE: Int = 1
+    private const val CACHE_VERSION: Int = 1
+
+    private fun taskRunner(): TaskRunner =
+      TaskRunner(
+        RealBackend { runnable ->
+          Thread(runnable, AndroidxRepositoryCache::class.simpleName!!).apply { isDaemon = true }
+        },
+      )
   }
 }

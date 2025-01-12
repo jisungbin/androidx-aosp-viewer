@@ -12,107 +12,102 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.coroutines.executeAsync
 import okhttp3.logging.HttpLoggingInterceptor
-import okio.BufferedSource
-import okio.buffer
-import org.jetbrains.annotations.TestOnly
+import okio.Source
+import org.jetbrains.annotations.VisibleForTesting
 import thirdparty.Timber
 
 public class AndroidxRepository(
-  public val authorizationToken: String? = null,
-  public val logLevel: HttpLoggingInterceptor.Level = HttpLoggingInterceptor.Level.BASIC,
-  public val cache: AndroidxRepositoryCache? = null,
-  private val base: HttpUrl = "https://api.github.com".toHttpUrl(),
+  private val authorizationToken: String? = null,
+  private val cache: AndroidxRepositoryCache? = null,
+  private val logging: HttpLoggingInterceptor.Level = HttpLoggingInterceptor.Level.BASIC,
+  private val baseUrl: HttpUrl = "https://api.github.com".toHttpUrl(),
   private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-  private var logger: Timber.Tree = Timber.Forest
-
-  @TestOnly internal fun useLogger(timber: Timber.Tree): AndroidxRepository =
-    apply { this.logger = timber }
-
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  public suspend fun fetchTrees(ref: String = HOME_REF, noCache: Boolean = false): BufferedSource {
+  public suspend fun fetchTree(ref: String = HOME_REF, noCache: Boolean = false): Source {
     val cache = cache.takeUnless { noCache }
 
     val candidateCache = cache?.getCachedSource(ref)
     if (candidateCache != null) {
       Timber.d("Fetched the repository from cache: $ref")
-      return candidateCache.buffer()
+      return candidateCache
     }
 
-    val url = base.newBuilder()
+    val url = baseUrl.newBuilder()
       .addPathSegments("repos/androidx/androidx/git/trees")
       .addPathSegment(ref)
       .build()
-    val response = withContext(dispatcher) { client().newCall(request(url)).executeAsync() }
+    val response = withContext(dispatcher) {
+      client().newCall(request(url)).executeAsync()
+    }
 
     if (!response.isSuccessful) {
-      logger.e("Failed to fetch the repository: $response")
+      Timber.e("Failed to fetch the repository: $response")
       GitHubAuthenticateException.parse(response)?.let { throw it }
       throw IOException(response.message)
     }
 
     return response.body.source().also { source ->
-      val caching = cache?.upsertSource(ref, source.apply { request(Long.MAX_VALUE) }.buffer.snapshot())
-      if (caching == true)
-        logger.d("Caching the repository: $ref")
-      else if (caching == false)
-        logger.e("Failed to cache the repository: $ref")
+      val caching = cache?.putSource(ref, source) ?: return@also
+      if (caching)
+        Timber.d("Caching the repository: $ref")
+      else
+        Timber.e("Failed to cache the repository: $ref")
     }
   }
 
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  internal suspend fun readBlobContent(url: String, noCache: Boolean = false): BufferedSource {
+  public suspend fun fetchBlob(url: String, noCache: Boolean = false): Source {
     val cache = cache.takeUnless { noCache }
-    val cacheRef = url.substringAfterLast('/')
+    val sha = url.substringAfterLast('/')
 
-    val candidateCache = cache?.getCachedSource(cacheRef)
+    val candidateCache = cache?.getCachedSource(sha)
     if (candidateCache != null) {
       Timber.d("Fetched the blob from cache: $url")
-      return candidateCache.buffer()
+      return candidateCache
     }
 
-    val response = withContext(dispatcher) { client().newCall(request(url.toHttpUrl())).executeAsync() }
+    val response = withContext(dispatcher) {
+      client().newCall(request(url.toHttpUrl())).executeAsync()
+    }
 
     if (!response.isSuccessful) {
-      logger.e("Failed to fetch the blob: $response")
+      Timber.e("Failed to fetch the blob: $response")
       GitHubAuthenticateException.parse(response)?.let { throw it }
       throw IOException(response.message)
     }
 
     return response.body.source().also { source ->
-      val caching = cache?.upsertSource(cacheRef, source.apply { request(Long.MAX_VALUE) }.buffer.snapshot())
-      if (caching == true)
-        logger.d("Caching the blob: $url")
-      else if (caching == false)
-        logger.e("Failed to cache the blob: $url")
+      val caching = cache?.putSource(sha, source) ?: return@also
+      if (caching)
+        Timber.d("Caching the blob: $url")
+      else
+        Timber.e("Failed to cache the blob: $url")
     }
   }
 
-  private fun client(): OkHttpClient {
-    val httpLogging = run {
-      if (logLevel > HttpLoggingInterceptor.Level.NONE) {
-        HttpLoggingInterceptor(logger::d)
-          .apply { redactHeader(GITHUB_AUTHORIZATION_HEADER) }
-          .setLevel(logLevel)
-      } else {
-        null
-      }
-    }
-
-    return OkHttpClient.Builder()
-      .apply { httpLogging?.let(::addInterceptor) }
+  private fun client(): OkHttpClient =
+    OkHttpClient.Builder()
+      .addInterceptor(
+        HttpLoggingInterceptor(Timber::d).apply {
+          level = logging
+          redactHeader(GITHUB_AUTHORIZATION_HEADER)
+        },
+      )
       .build()
-  }
 
   private fun request(url: HttpUrl): Request =
     Request.Builder()
       .url(url)
       .addHeader("X-GitHub-Api-Version", "2022-11-28")
-      .apply { if (authorizationToken != null) addHeader(GITHUB_AUTHORIZATION_HEADER, "Bearer $authorizationToken") }
+      .apply {
+        if (authorizationToken != null)
+          addHeader(GITHUB_AUTHORIZATION_HEADER, "Bearer $authorizationToken")
+      }
       .build()
 
   public companion object {
     public const val HOME_REF: String = "androidx-main"
-    private const val GITHUB_AUTHORIZATION_HEADER = "Authorization"
+    @VisibleForTesting internal const val GITHUB_AUTHORIZATION_HEADER = "Authorization"
   }
 }

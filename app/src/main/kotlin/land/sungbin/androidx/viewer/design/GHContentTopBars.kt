@@ -49,7 +49,7 @@ import land.sungbin.androidx.viewer.R
     title = {
       Column {
         Text(
-          if (item.isBlob()) firstContent!!.name else firstContent?.parent?.name ?: AndroidxRepository.HOME_REF,
+          if (item.isBlob()) firstContent!!.path else firstContent?.parent?.path ?: AndroidxRepository.HOME_REF,
           style = MaterialTheme.typography.titleMedium,
           maxLines = 1,
         )

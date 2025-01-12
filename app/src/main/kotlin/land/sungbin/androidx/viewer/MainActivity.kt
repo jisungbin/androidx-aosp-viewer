@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
                       ),
                       onRefresh = {
                         scope.launch {
-                          codeScreenPresenter.fetch(
+                          codeScreenPresenter.assigningFetch(
                             ref = firstContent.sha,
                             parent = firstContent.takeUnless(GitContent::isRoot),
                             noCache = true,
