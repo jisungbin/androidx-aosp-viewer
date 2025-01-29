@@ -4,7 +4,7 @@ jdk = "21"
 gradle-android = "8.7.3"
 
 kotlin = "2.1.0"
-kotlin-ksp = "2.1.0-1.0.29"
+kotlin-ksp = "2.1.10-1.0.29"
 kotlin-coroutines = "1.10.1"
 kotlin-immutableCollections = "0.3.8"
 kotlin-poko = "0.18.2"
