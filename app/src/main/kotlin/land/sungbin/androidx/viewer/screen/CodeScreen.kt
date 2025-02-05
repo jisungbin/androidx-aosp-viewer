@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State as ComposeState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import com.slack.circuit.codegen.annotations.CircuitInject
@@ -26,8 +27,8 @@ import land.sungbin.androidx.fetcher.isBlob
 import land.sungbin.androidx.fetcher.isDirectory
 import land.sungbin.androidx.fetcher.isRoot
 import land.sungbin.androidx.fetcher.isTree
-import land.sungbin.androidx.viewer.design.GHContentLoading
-import land.sungbin.androidx.viewer.design.GHContentTree
+import land.sungbin.androidx.viewer.ui.GHContentLoading
+import land.sungbin.androidx.viewer.ui.GHContentTree
 import me.tatarka.inject.annotations.Inject
 import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
@@ -40,11 +41,12 @@ import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 
   // TODO Is this the best?
   @SingleIn(AppScope::class)
-  @JvmInline value class SharedState(val item: MutableState<GitItem>) {
+  @JvmInline value class SharedState(val state: ComposeState<GitItem>) {
     @Inject constructor() : this(mutableStateOf(GitItem.Tree(persistentListOf())))
 
     fun assign(item: GitItem) {
-      this.item.value = item
+      check(state is MutableState) { "State is not mutable" }
+      state.value = item
     }
   }
 
@@ -67,7 +69,7 @@ fun CodeScreen.SharedState.assignAsBlob(raw: String, content: GitContent) {
 @Composable fun Codes(state: CodeScreen.State, modifier: Modifier = Modifier) {
   val firstContent = state.item.firstContentOrNull()
 
-  BackHandler(firstContent?.isRoot == false || firstContent?.isRoot == true && state.item.isBlob()) {
+  BackHandler(firstContent?.isRoot == false || state.item.isBlob() && firstContent?.isRoot == true) {
     state.eventSink(CodeScreen.Event.Fetch(parent = firstContent?.parent))
   }
 

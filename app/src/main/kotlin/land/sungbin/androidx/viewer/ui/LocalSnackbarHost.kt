@@ -1,6 +1,6 @@
 // Copyright 2025 Ji Sungbin
 // SPDX-License-Identifier: Apache-2.0
-package land.sungbin.androidx.viewer.screen
+package land.sungbin.androidx.viewer.ui
 
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.ProvidableCompositionLocal

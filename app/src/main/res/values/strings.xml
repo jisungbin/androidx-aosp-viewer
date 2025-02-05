@@ -14,6 +14,7 @@
   <string name="preferences_cache_size_unit">MB</string>
   <string name="preferences_cache_disable_hint">Enter 0 to disable the cache.</string>
   <string name="preferences_gh_login">GitHub login</string>
+  <string name="preferences_gh_login_app_restart">It will be applied after restarting the app.</string>
   <string name="preferences_gh_logged_in">Last logged in on %s. Click to log out.</string>
   <string name="preferences_gh_logged_out">Not logged in. Click to log in.</string>
 

@@ -11,6 +11,8 @@ import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import java.net.HttpURLConnection.HTTP_BAD_REQUEST
+import java.net.HttpURLConnection.HTTP_FORBIDDEN
+import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import java.nio.file.Path
 import kotlin.test.Ignore
@@ -154,7 +156,7 @@ class AndroidxRepositoryTest {
       .hasMessage("HTTP_BAD_REQUEST")
   }
 
-  @Test fun throwsGitHubExceptionOnFailedFetchWhenConditionMet(server: MockWebServer) = runTest {
+  @Test fun throwsGitHubExceptionOnUnauthorizedFetch(server: MockWebServer) = runTest {
     val repo = repo(server.url("/"))
 
     server.enqueue(
@@ -166,6 +168,34 @@ class AndroidxRepositoryTest {
     assertFailure { repo.fetchTree() }
       .isInstanceOf<GitHubAuthenticateException>()
       .hasMessage("HTTP_UNAUTHORIZED")
+  }
+
+  @Test fun throwsGitHubExceptionOnForbiddenFetch(server: MockWebServer) = runTest {
+    val repo = repo(server.url("/"))
+
+    server.enqueue(
+      MockResponse.Builder()
+        .status("HTTP/1.1 $HTTP_FORBIDDEN HTTP_FORBIDDEN")
+        .build(),
+    )
+
+    assertFailure { repo.fetchTree() }
+      .isInstanceOf<GitHubAuthenticateException>()
+      .hasMessage("HTTP_FORBIDDEN")
+  }
+
+  @Test fun throwsGitHubExceptionOnNotFoundFetch(server: MockWebServer) = runTest {
+    val repo = repo(server.url("/"))
+
+    server.enqueue(
+      MockResponse.Builder()
+        .status("HTTP/1.1 $HTTP_NOT_FOUND HTTP_NOT_FOUND")
+        .build(),
+    )
+
+    assertFailure { repo.fetchTree() }
+      .isInstanceOf<GitHubAuthenticateException>()
+      .hasMessage("HTTP_NOT_FOUND")
   }
 
   private fun TestScope.repo(

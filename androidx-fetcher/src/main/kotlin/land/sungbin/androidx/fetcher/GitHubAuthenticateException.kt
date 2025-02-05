@@ -11,7 +11,7 @@ import okhttp3.Response
 
 @Poko public class GitHubAuthenticateException(
   public val code: Int,
-  override val message: String,
+  override val message: String?,
 ) : IOException() {
   internal companion object {
     internal fun parse(response: Response): GitHubAuthenticateException? {

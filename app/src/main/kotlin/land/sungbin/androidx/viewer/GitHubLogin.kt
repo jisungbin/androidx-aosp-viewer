@@ -5,13 +5,19 @@ package land.sungbin.androidx.viewer
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.MainThread
 import androidx.annotation.UiContext
+import androidx.annotation.WorkerThread
+import androidx.core.net.toUri
 import com.squareup.moshi.JsonReader
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlinx.coroutines.suspendCancellableCoroutine
 import land.sungbin.androidx.viewer.util.runSuspendCatching
 import me.tatarka.inject.annotations.Inject
 import okhttp3.HttpUrl
@@ -36,18 +42,21 @@ import thirdparty.Timber
   private val client = OkHttpClient.Builder()
     .addInterceptor(
       HttpLoggingInterceptor { message -> Timber.tag(TAG).d(message) }
-        .apply { level = HttpLoggingInterceptor.Level.BODY },
+        .setLevel(HttpLoggingInterceptor.Level.BODY),
     )
     .build()
 
   private val loginRequestState = AtomicReference<UInt?>(null)
+  private val resumer = AtomicReference<Continuation<Result<String>>>(null)
 
   fun canLogin(): Boolean = id != null && secret != null
 
-  fun login(@UiContext context: Context) {
+  @MainThread
+  suspend fun login(@UiContext context: Context) = suspendCancellableCoroutine<Result<String>> { cont ->
     check(canLogin()) { "GitHub OAuth ID or secret is null" }
 
     loginRequestState.set(Random(System.nanoTime()).nextUInt())
+    resumer.set(cont)
 
     val url = HttpUrl.Builder()
       .scheme("https")
@@ -58,23 +67,26 @@ import thirdparty.Timber
       .addQueryParameter("state", loginRequestState.get().toString())
       .build()
 
-    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url.toString())))
+    context.startActivity(Intent(Intent.ACTION_VIEW, url.toString().toUri()))
   }
 
-  suspend fun requestAccessTokenFromRedirectUri(uri: Uri): Result<String> {
-    Timber.tag(TAG).d("Receive redirect uri: %s", uri)
+  @WorkerThread
+  suspend fun resumeWithAccessToken(redirectUri: Uri) {
+    Timber.tag(TAG).d("Receive redirect uri: %s", redirectUri)
 
-    val code = uri.getQueryParameter("code")
-    val state = uri.getQueryParameter("state")
+    val loginRequestState = checkNotNull(loginRequestState.getAndSet(null)) { "Please login() first" }
+    val resumer = checkNotNull(resumer.getAndSet(null)) { "Please login() first" }
 
-    if (code == null || state == null || state != loginRequestState.get().toString())
-      return Result.failure(IllegalArgumentException("Invalid uri: $code, $state"))
+    val code = redirectUri.getQueryParameter("code")
+    val state = redirectUri.getQueryParameter("state")
 
-    loginRequestState.set(null)
+    if (code == null || state != loginRequestState.toString())
+      return resumer.resume(Result.failure(IllegalArgumentException("Invalid uri: $code, $state")))
 
-    return requestAccessToken(code)
+    resumer.resume(requestAccessToken(code))
   }
 
+  @WorkerThread
   private suspend fun requestAccessToken(code: String): Result<String> {
     val url = HttpUrl.Builder()
       .scheme("https")
@@ -113,7 +125,7 @@ import thirdparty.Timber
     return null
   }
 
-  private object EmptyRequest : RequestBody() {
+  private data object EmptyRequest : RequestBody() {
     override fun contentType(): MediaType? = null
     override fun writeTo(sink: BufferedSink) {}
   }
@@ -126,7 +138,8 @@ import thirdparty.Timber
 
     const val LOGIN_URI_SCHEME = "androidx-aosp-viewer"
     const val LOGIN_URI_HOST = "github-login"
-    const val LOGOUT_FLAG = -1L
+
+    const val LOGOUT_FLAG_DATE = -1L
 
     // `SimpleDateFormat.getDateInstance()` is not singleton instance
     val LOGIN_DATE_FORMAT: DateFormat = SimpleDateFormat.getDateInstance()

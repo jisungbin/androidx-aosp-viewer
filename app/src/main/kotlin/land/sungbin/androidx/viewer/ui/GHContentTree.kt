@@ -1,6 +1,6 @@
 // Copyright 2024 Ji Sungbin
 // SPDX-License-Identifier: Apache-2.0
-package land.sungbin.androidx.viewer.design
+package land.sungbin.androidx.viewer.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -33,54 +33,42 @@ import land.sungbin.androidx.fetcher.isDirectory
 
   LazyColumn(modifier = modifier, state = listState) {
     items(contents) { content ->
-      if (content.isDirectory) {
-        GHFolder(
-          content.path,
-          modifier = Modifier.fillMaxWidth(),
-          onClick = { onContentClick(content) },
-        )
-      } else {
-        GHBlob(
-          content,
-          modifier = Modifier.fillMaxWidth(),
-          onClick = { onContentClick(content) },
-        )
-      }
+      GHContent(
+        content,
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { onContentClick(content) },
+      )
     }
   }
 }
 
-@Composable private fun GHFolder(
-  name: String,
-  modifier: Modifier = Modifier,
-  onClick: () -> Unit = {},
-) {
-  Text(
-    name,
-    modifier = modifier
-      .clickable(onClick = onClick)
-      .padding(vertical = 8.dp, horizontal = 16.dp),
-    style = MaterialTheme.typography.titleMedium,
-  )
-}
-
-@Composable private fun GHBlob(
+@Composable private fun GHContent(
   content: GitContent,
   modifier: Modifier = Modifier,
   onClick: () -> Unit = {},
 ) {
-  val size = requireNotNull(content.size) { "size must not be null" }
-
-  Column(
-    modifier = modifier
-      .clickable(onClick = onClick)
-      .padding(vertical = 8.dp, horizontal = 16.dp),
-  ) {
-    Text(content.path, style = MaterialTheme.typography.titleMedium)
+  if (content.isDirectory) {
     Text(
-      "%.2f KB".format(size / 1_000),
-      modifier = Modifier.paddingFromBaseline(top = 20.dp),
-      style = MaterialTheme.typography.bodySmall,
+      content.path,
+      modifier = modifier
+        .clickable(onClick = onClick)
+        .padding(vertical = 8.dp, horizontal = 16.dp),
+      style = MaterialTheme.typography.titleMedium,
     )
+  } else {
+    val size = requireNotNull(content.size) { "size must not be null" }
+
+    Column(
+      modifier = modifier
+        .clickable(onClick = onClick)
+        .padding(vertical = 8.dp, horizontal = 16.dp),
+    ) {
+      Text(content.path, style = MaterialTheme.typography.titleMedium)
+      Text(
+        "%.2f KB".format(size / 1_000),
+        modifier = Modifier.paddingFromBaseline(top = 20.dp),
+        style = MaterialTheme.typography.bodySmall,
+      )
+    }
   }
 }

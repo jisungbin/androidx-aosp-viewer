@@ -23,6 +23,15 @@ public class AndroidxRepository(
   private val baseUrl: HttpUrl = "https://api.github.com".toHttpUrl(),
   private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+  private val loggingInterceptor =
+    HttpLoggingInterceptor(Timber::d).apply {
+      level = logging
+      redactHeader(GITHUB_AUTHORIZATION_HEADER)
+    }
+
+  public val hasGHAccessToken: Boolean
+    get() = authorizationToken != null
+
   @Throws(IOException::class, GitHubAuthenticateException::class)
   public suspend fun fetchTree(ref: String = HOME_REF, noCache: Boolean = false): Source {
     val cache = cache.takeUnless { noCache }
@@ -88,12 +97,7 @@ public class AndroidxRepository(
 
   private fun client(): OkHttpClient =
     OkHttpClient.Builder()
-      .addInterceptor(
-        HttpLoggingInterceptor(Timber::d).apply {
-          level = logging
-          redactHeader(GITHUB_AUTHORIZATION_HEADER)
-        },
-      )
+      .addInterceptor(loggingInterceptor)
       .build()
 
   private fun request(url: HttpUrl): Request =

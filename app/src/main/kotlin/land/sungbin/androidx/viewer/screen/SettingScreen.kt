@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 package land.sungbin.androidx.viewer.screen
 
+import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,10 +55,9 @@ import software.amazon.lastmile.kotlin.inject.anvil.AppScope
     @Poko class UpdatePreferences(
       val fontSize: Int? = null,
       val maxCacheSize: Long? = null,
-      val ghLoginDate: Long? = null,
     ) : Event
 
-    data object ToggleGitHubLogin : Event
+    @Poko class ToggleGitHubLogin(val windowHost: Activity) : Event
   }
 }
 
@@ -64,6 +65,8 @@ private val notNumberRegex = Regex("\\D")
 
 @CircuitInject(SettingScreen::class, AppScope::class)
 @Composable fun Settings(state: SettingScreen.State, modifier: Modifier = Modifier) {
+  val activity = LocalActivity.current!!
+
   val fontSize by rememberUpdatedState(state.fontSize)
   val maxCacheSize by rememberUpdatedState(state.maxCacheSize)
   val ghLoginDate by rememberUpdatedState(state.ghLoginDate)
@@ -111,20 +114,15 @@ private val notNumberRegex = Regex("\\D")
       }
       // TODO number formatting via VisualTransformation
       OutlinedTextField(
-        modifier = Modifier.fillMaxWidth(0.7f),
         value = maxCacheSize.coerceAtLeast(0L).toString(),
         onValueChange = { newMaxCacheSize ->
           val preferenceValue = newMaxCacheSize.replace(notNumberRegex, "").toLongOrNull() ?: -1
           state.eventSink(UpdatePreferences(maxCacheSize = preferenceValue))
         },
+        modifier = Modifier.fillMaxWidth(0.7f),
         textStyle = MaterialTheme.typography.bodyMedium,
         suffix = { Text(" " + stringResource(R.string.preferences_cache_size_unit)) },
-        keyboardOptions = remember {
-          KeyboardOptions(
-            keyboardType = KeyboardType.Number,
-            imeAction = ImeAction.Done,
-          )
-        },
+        keyboardOptions = remember { KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done) },
         singleLine = true,
       )
     }
@@ -134,14 +132,23 @@ private val notNumberRegex = Regex("\\D")
         modifier = Modifier
           .padding(top = 10.dp)
           .fillMaxWidth(),
-        onClick = { state.eventSink(ToggleGitHubLogin) },
+        onClick = { state.eventSink(ToggleGitHubLogin(windowHost = activity)) },
       ) {
         Text(
-          if (ghLoginDate == GitHubLogin.LOGOUT_FLAG) stringResource(R.string.preferences_gh_logged_out)
-          else stringResource(R.string.preferences_gh_logged_in, ghLoginDate.toDateString()),
+          if (ghLoginDate == GitHubLogin.LOGOUT_FLAG_DATE)
+            stringResource(R.string.preferences_gh_logged_out)
+          else
+            stringResource(R.string.preferences_gh_logged_in, ghLoginDate.toDateString()),
           style = MaterialTheme.typography.bodyMedium,
         )
       }
+      Text(
+        stringResource(R.string.preferences_gh_login_app_restart),
+        modifier = Modifier
+          .padding(top = 5.dp)
+          .align(Alignment.CenterHorizontally),
+        style = MaterialTheme.typography.labelSmall,
+      )
     }
   }
 }

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.DrawableRes
@@ -38,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
-import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.lifecycleScope
 import com.slack.circuit.backstack.rememberSaveableBackStack
@@ -56,17 +56,15 @@ import land.sungbin.androidx.fetcher.isFile
 import land.sungbin.androidx.fetcher.isRoot
 import land.sungbin.androidx.fetcher.paths
 import land.sungbin.androidx.fetcher.sha
-import land.sungbin.androidx.viewer.design.EmptyTopBar
-import land.sungbin.androidx.viewer.design.GHContentTopBar
 import land.sungbin.androidx.viewer.di.KotlinInjectAppComponent
 import land.sungbin.androidx.viewer.di.create
 import land.sungbin.androidx.viewer.screen.CodeScreen
-import land.sungbin.androidx.viewer.screen.LocalSnackbarHost
 import land.sungbin.androidx.viewer.screen.NoteScreen
 import land.sungbin.androidx.viewer.screen.SettingScreen
-import land.sungbin.androidx.viewer.util.PreferencesKey
+import land.sungbin.androidx.viewer.ui.EmptyTopBar
+import land.sungbin.androidx.viewer.ui.GHContentTopBar
+import land.sungbin.androidx.viewer.ui.LocalSnackbarHost
 import land.sungbin.androidx.viewer.util.conditionalLambda
-import thirdparty.Timber
 
 private data class NavigationBarItemData(
   val screen: Screen,
@@ -100,10 +98,12 @@ private data class NavigationBarItemData(
 
 class MainActivity : ComponentActivity() {
   private val apps by lazy { KotlinInjectAppComponent::class.create() }
+  private val codeScreenPresenter by lazy { apps.codeScreenPresenter(App.preloadedRepoReader) }
   private val circuit by lazy {
     apps.circuit
       .newBuilder()
-      .addPresenter<SettingScreen, SettingScreen.State>(apps.settingScreenPresenter(dataStore, this))
+      .addPresenter<CodeScreen, CodeScreen.State>(codeScreenPresenter)
+      .addPresenter<SettingScreen, SettingScreen.State>(apps.settingScreenPresenter(dataStore))
       .build()
   }
 
@@ -118,11 +118,13 @@ class MainActivity : ComponentActivity() {
         val navigator = rememberCircuitNavigator(backStack)
         val snackbarHost = remember { SnackbarHostState() }
 
-        val gitItem = apps.codeScreenSharedState.item.value
-        val codeScreenPresenter = apps.codeScreenPresenter
+        val gitItem = apps.codeScreenSharedState.state.value
 
         MaterialTheme(colorScheme = dynamicThemeScheme()) {
-          CompositionLocalProvider(LocalSnackbarHost provides snackbarHost) {
+          CompositionLocalProvider(
+            LocalSnackbarHost provides snackbarHost,
+            LocalActivity provides this,
+          ) {
             Scaffold(
               modifier = Modifier.fillMaxSize(),
               topBar = {
@@ -134,7 +136,7 @@ class MainActivity : ComponentActivity() {
                     GHContentTopBar(
                       modifier = Modifier.fillMaxWidth(),
                       item = gitItem,
-                      onBackClick = conditionalLambda<Unit>(
+                      onBackClick = conditionalLambda(
                         { !firstContent.isRoot || firstContent.isRoot && gitItem.isBlob() },
                         onBackPressedDispatcher::onBackPressed,
                       ),
@@ -199,29 +201,18 @@ class MainActivity : ComponentActivity() {
       redirectUri.host == GitHubLogin.LOGIN_URI_HOST
     ) {
       lifecycleScope.launch(Dispatchers.IO) {
-        val result = apps.ghLogin.requestAccessTokenFromRedirectUri(redirectUri)
-
-        result
-          .onSuccess { token ->
-            Timber.d("GitHub AccessToken: %s", result)
-            dataStore.edit { preferences ->
-              preferences[PreferencesKey.GHAccessToken] = token
-              preferences[PreferencesKey.GHLoginDate] = System.currentTimeMillis()
-            }
-          }
-          .onFailure { exception ->
-            Timber.e(exception, "Failed to get GitHub AccessToken.")
-          }
+        apps.ghLogin.resumeWithAccessToken(redirectUri)
       }
     }
   }
 
-  private fun GitContent.githubLink(blob: Boolean): String = buildString {
-    append("https://github.com/androidx/androidx/blob/")
-    append(AndroidxRepository.HOME_REF)
-    append('/')
-    append(if (blob && isFile) paths else parent?.paths.orEmpty())
-  }
+  private fun GitContent.githubLink(blob: Boolean): String =
+    buildString {
+      append("https://github.com/androidx/androidx/blob/")
+      append(AndroidxRepository.HOME_REF)
+      append('/')
+      append(if (blob && isFile) paths else parent?.paths.orEmpty())
+    }
 
   companion object {
     private const val SETTINGS_PREFERENCES_NAME = "settings"

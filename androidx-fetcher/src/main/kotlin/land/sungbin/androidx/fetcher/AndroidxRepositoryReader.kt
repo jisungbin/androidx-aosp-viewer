@@ -10,7 +10,7 @@ import okio.Source
 import okio.buffer
 import thirdparty.Timber
 
-public class AndroidxRepositoryReader(private val repo: AndroidxRepository) {
+public class AndroidxRepositoryReader(public val repo: AndroidxRepository) {
   @Throws(IOException::class, GitHubAuthenticateException::class)
   public fun readTree(
     source: Source,

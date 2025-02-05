@@ -21,6 +21,10 @@ import org.junit.jupiter.api.io.TempDir
 import thirdparty.TaskFaker
 
 class AndroidxRepositoryCacheTest {
+  @Test fun createsInstance(@TempDir path: Path) {
+    cache(path)
+  }
+
   @Test fun initializesCacheOnCreation(@TempDir path: Path) {
     val cache = cache(path)
     val cacheIsInitialized = DiskLruCache::class.java

@@ -11,7 +11,6 @@ import kotlinx.collections.immutable.toImmutableList
   private val tree: List<GitContent>,
 ) : ImmutableList<GitContent> by tree.toImmutableList() {
   public companion object {
-    public val Empty: AndroidxRepositoryTree =
-      AndroidxRepositoryTree(truncated = false, tree = emptyList())
+    public val Empty: AndroidxRepositoryTree = AndroidxRepositoryTree(truncated = false, tree = emptyList())
   }
 }

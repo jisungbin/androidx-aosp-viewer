@@ -9,6 +9,7 @@
 *.iml
 .gradle
 .kotlin
+.DS_Store
 build
 release
 local.properties

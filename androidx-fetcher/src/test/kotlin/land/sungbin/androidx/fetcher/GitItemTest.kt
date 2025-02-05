@@ -16,7 +16,7 @@ import kotlinx.collections.immutable.toImmutableList
 class GitItemTest {
   @Test fun requiresSizeForBlobType() {
     assertFailure {
-      GitItem.Blob(GitContent("name", "url", size = null))
+      GitItem.Blob("", GitContent("name", "url", size = null))
     }
       .isInstanceOf<IllegalArgumentException>()
       .hasMessage("size should not be null")
@@ -27,7 +27,7 @@ class GitItemTest {
       GitContent("name $it", "url $it", it.toLong(), parent = null)
     }
     val tree = GitItem.Tree(contents.toImmutableList())
-    val blob = GitItem.Blob(contents.last())
+    val blob = GitItem.Blob("", contents.last())
 
     assertThat(tree.firstContentOrNull(), name = "tree").isEqualTo(contents.first())
     assertThat(blob.firstContentOrNull(), name = "blob").isEqualTo(contents.last())
@@ -35,7 +35,7 @@ class GitItemTest {
 
   @Suppress("KotlinConstantConditions")
   @Test fun isBlob() {
-    val blob = GitItem.Blob(GitContent("name", "url", 0L, parent = null))
+    val blob = GitItem.Blob("", GitContent("name", "url", 0L, parent = null))
     assertThat(blob.isBlob()).isTrue()
     assertThat(blob.isTree()).isFalse()
   }

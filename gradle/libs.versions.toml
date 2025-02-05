@@ -1,19 +1,19 @@
 [versions]
 jdk = "21"
 
-gradle-android = "8.7.3"
+gradle-android = "8.8.0"
 
-kotlin = "2.1.0"
-kotlin-ksp = "2.1.0-1.0.29"
+kotlin = "2.1.10"
+kotlin-ksp = "2.1.10-1.0.29"
 kotlin-coroutines = "1.10.1"
 kotlin-immutableCollections = "0.3.8"
 kotlin-poko = "0.18.2"
 
-androidx-activity = "1.9.3"
-androidx-datastore = "1.1.1"
+androidx-activity = "1.10.0"
+androidx-datastore = "1.1.2"
 
 compose-material3 = "1.3.1"
-compose-activity = "1.9.3"
+compose-activity = "1.10.0"
 compose-stableMarker = "1.0.5"
 compose-lottie = "0.6.2"
 
@@ -27,7 +27,7 @@ okhttp = "5.0.0-alpha.14"
 moshi = "1.15.2"
 leakcanary = "3.0-alpha-8"
 
-spotless = "7.0.1"
+spotless = "7.0.2"
 ktlint = "1.5.0"
 
 test-assertk = "0.28.1"

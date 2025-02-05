@@ -27,7 +27,9 @@ class GitHubAuthenticateExceptionTest {
       .isNotNull()
       .all {
         prop(GitHubAuthenticateException::code).isEqualTo(HTTP_UNAUTHORIZED)
-        prop(GitHubAuthenticateException::message).endsWith("Unauthorized")
+        prop(GitHubAuthenticateException::message)
+          .isNotNull()
+          .endsWith("Unauthorized")
       }
   }
 
@@ -39,7 +41,9 @@ class GitHubAuthenticateExceptionTest {
       .isNotNull()
       .all {
         prop(GitHubAuthenticateException::code).isEqualTo(HTTP_FORBIDDEN)
-        prop(GitHubAuthenticateException::message).endsWith("Forbidden")
+        prop(GitHubAuthenticateException::message)
+          .isNotNull()
+          .endsWith("Forbidden")
       }
   }
 
@@ -51,7 +55,9 @@ class GitHubAuthenticateExceptionTest {
       .isNotNull()
       .all {
         prop(GitHubAuthenticateException::code).isEqualTo(HTTP_NOT_FOUND)
-        prop(GitHubAuthenticateException::message).endsWith("Not Found")
+        prop(GitHubAuthenticateException::message)
+          .isNotNull()
+          .endsWith("Not Found")
       }
   }
 

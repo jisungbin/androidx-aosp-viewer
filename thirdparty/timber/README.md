@@ -1,6 +1,6 @@
 ## thirdparty/timber
 
-This code copied from [README.md](../okhttp-taskfaker/README.md).
+This code copied from https://github.com/JakeWharton/timber/blob/beb8051248164a74b264d30427f633aaf4bda841/timber/src/main/java/timber/log/Timber.kt.
 
 Original license: Apache-2.0 @ 2013 Jake Wharton
 
