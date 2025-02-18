@@ -6,7 +6,7 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.coroutines.cancellation.CancellationException
 
-@Suppress("WRONG_INVOCATION_KIND") // false-positive
+@Suppress("WRONG_INVOCATION_KIND")
 inline fun <T> runSuspendCatching(block: () -> T): Result<T> {
   contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
   return try {

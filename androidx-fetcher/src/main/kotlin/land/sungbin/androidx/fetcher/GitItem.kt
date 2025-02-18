@@ -4,15 +4,19 @@ package land.sungbin.androidx.fetcher
 
 import androidx.compose.runtime.Immutable
 import kotlin.contracts.contract
-import kotlinx.collections.immutable.ImmutableList
 
 @Immutable public sealed interface GitItem {
-  @Immutable
-  @JvmInline public value class Tree(public val contents: ImmutableList<GitContent>) : GitItem
+  public val parent: Tree?
+
+  @Immutable public data class Tree(
+    public val tree: AndroidxRepositoryTree,
+    override val parent: Tree?,
+  ) : GitItem
 
   @Immutable public data class Blob(
     public val raw: String,
     public val content: GitContent,
+    override val parent: Tree?,
   ) : GitItem {
     init {
       requireNotNull(content.size) { "size should not be null" }
@@ -20,11 +24,22 @@ import kotlinx.collections.immutable.ImmutableList
   }
 }
 
-public val GitItem.Blob.extension: String
-  get() = content.path.substringAfterLast('.', missingDelimiterValue = "")
+public val GitItem.paths: String
+  get() = buildString {
+    var parent = parent
+    while (parent != null) {
+      val firstContent = parent.firstContentOrNull() ?: break
+      insert(0, "${firstContent.path}/")
+      parent = parent.parent
+    }
+    append(firstContentOrNull()?.path.orEmpty())
+  }
 
 public fun GitItem.firstContentOrNull(): GitContent? =
-  if (isBlob()) content else contents.firstOrNull()
+  if (isBlob()) content else tree.contents.firstOrNull()
+
+public val GitItem.isRoot: Boolean
+  inline get() = parent == null
 
 public fun GitItem.isTree(): Boolean {
   contract {

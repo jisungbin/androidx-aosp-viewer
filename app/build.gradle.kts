@@ -72,6 +72,8 @@ composeCompiler {
 }
 
 dependencies {
+  lintChecks(libs.compose.lint.slack)
+
   implementation(projects.androidxFetcher)
   implementation(projects.thirdparty.timber)
 

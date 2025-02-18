@@ -3,23 +3,25 @@
   ~ SPDX-License-Identifier: Apache-2.0
   -->
 <resources>
-  <string name="app_name">AndroidxViewer</string>
+    <string name="app_name">AndroidxViewer</string>
+    <string name="error_unknown">Unknown error %s</string>
 
-  <string name="screen_code">Code</string>
-  <string name="screen_note">Note</string>
-  <string name="screen_setting">Setting</string>
+    <string name="screen_code">Code</string>
+    <string name="screen_code_tree_truncated">This tree is too large to display in full</string>
+    <string name="screen_note">Note</string>
+    <string name="screen_setting">Setting</string>
 
-  <string name="preferences_font_size">Font size</string>
-  <string name="preferences_max_cache_size">Max cache size</string>
-  <string name="preferences_cache_size_unit">MB</string>
-  <string name="preferences_cache_disable_hint">Enter 0 to disable the cache.</string>
-  <string name="preferences_gh_login">GitHub login</string>
-  <string name="preferences_gh_login_app_restart">It will be applied after restarting the app.</string>
-  <string name="preferences_gh_logged_in">Last logged in on %s. Click to log out.</string>
-  <string name="preferences_gh_logged_out">Not logged in. Click to log in.</string>
+    <string name="preferences_font_size">Font size</string>
+    <string name="preferences_max_cache_size">Max cache size</string>
+    <string name="preferences_cache_size_unit">MB</string>
+    <string name="preferences_cache_disable_hint">Enter 0 to disable the cache.</string>
+    <string name="preferences_gh_login">GitHub login</string>
+    <string name="preferences_gh_login_app_restart">It will be applied after restarting the app.</string>
+    <string name="preferences_gh_logged_in">Last logged in on %s. Click to log out.</string>
+    <string name="preferences_gh_logged_out">Not logged in. Click to log in.</string>
 
-  <string name="gh_cannot_login">Failed to log in. GitHub OAuth ID or secret is null.</string>
-  <string name="gh_fetch_failed">Failed to fetch the content.</string>
-  <string name="gh_fetch_failed_authenticate_expired">Your GitHub authentication has expired, please log in again.</string>
-  <string name="gh_fetch_failed_authenticate_needed">You have reached the GitHub API request limit, please log in for your next request.</string>
+    <string name="gh_cannot_login">Failed to log in. GitHub OAuth ID or secret is null.</string>
+    <string name="gh_fetch_failed">Failed to fetch the content.</string>
+    <string name="gh_fetch_failed_authenticate_expired">Your GitHub authentication has expired, please log in again.</string>
+    <string name="gh_fetch_failed_authenticate_needed">You have reached the GitHub API request limit, please log in for your next request.</string>
 </resources>

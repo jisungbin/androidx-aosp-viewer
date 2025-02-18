@@ -8,16 +8,12 @@ import androidx.compose.runtime.Immutable
   public val path: String,
   public val url: String,
   public val size: Long?,
-  public val parent: GitContent? = null,
 ) {
   init {
     require(path.isNotEmpty()) { "path should not be empty" }
     require(url.isNotEmpty()) { "url should not be empty" }
   }
 }
-
-public val GitContent.name: String
-  inline get() = path
 
 public val GitContent.sha: String
   get() =
@@ -30,16 +26,3 @@ public val GitContent.isFile: Boolean
 
 public val GitContent.isDirectory: Boolean
   get() = size == null
-
-public val GitContent.isRoot: Boolean
-  get() = parent == null
-
-public val GitContent.paths: String
-  get() = buildString {
-    var parent = parent
-    while (parent != null) {
-      insert(0, "${parent.path}/")
-      parent = parent.parent
-    }
-    append(path)
-  }

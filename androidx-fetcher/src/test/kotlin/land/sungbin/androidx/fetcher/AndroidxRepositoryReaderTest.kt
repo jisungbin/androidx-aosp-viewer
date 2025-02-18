@@ -6,7 +6,6 @@ import assertk.all
 import assertk.assertFailure
 import assertk.assertThat
 import assertk.assertions.containsExactly
-import assertk.assertions.containsOnly
 import assertk.assertions.hasMessage
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
@@ -28,47 +27,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(MockWebServerExtension::class)
 class AndroidxRepositoryReaderTest {
-  @Test fun setsTreeParentToGivenParent() {
-    val reader = AndroidxRepositoryReader(repo())
-    val parent = GitContent("parent path", "parent url", size = null)
-
-    // language=json
-    val json = """
-{
-  "sha": "aaaaaa",
-  "url": "https://example.com/",
-  "tree": [
-    {
-      "path": ".github",
-      "mode": "000000",
-      "type": "tree",
-      "sha": "aaaaaa",
-      "url": "https://example.com/"
-    },
-    {
-      "path": ".github2",
-      "mode": "00000",
-      "type": "tree",
-      "sha": "aaaaab",
-      "url": "https://example.com/"
-    },
-    {
-      "path": ".github3",
-      "mode": "000000",
-      "type": "tree",
-      "sha": "aaaaac",
-      "url": "https://example.com/"
-    }
-  ],
-  "truncated": false
-}
-    """.trimIndent()
-
-    val result = reader.readTree(bufferOf(json), parent)
-
-    assertThat(result.map(GitContent::parent)).containsOnly(parent)
-  }
-
   @Test fun closesSourceAfterParsing() {
     val reader = AndroidxRepositoryReader(repo())
 
@@ -120,7 +78,9 @@ class AndroidxRepositoryReaderTest {
     assertThat(reader.readTree(bufferOf(json)))
       .all {
         prop(AndroidxRepositoryTree::truncated).isTrue()
-        single().isEqualTo(GitContent(".github", "https://example.com/", size = null))
+        prop(AndroidxRepositoryTree::contents)
+          .single()
+          .isEqualTo(GitContent(".github", "https://example.com/", size = null))
       }
   }
 
@@ -201,7 +161,7 @@ class AndroidxRepositoryReaderTest {
 
     val result = reader.readTree(bufferOf(json))
 
-    assertThat(result)
+    assertThat(result.contents)
       .containsExactly(
         GitContent("folderA", "https://example.com/folderA", size = null),
         GitContent("folderB", "https://example.com/folderB", size = null),
@@ -252,7 +212,7 @@ class AndroidxRepositoryReaderTest {
 
     val result = reader.readTree(bufferOf(json))
 
-    assertThat(result)
+    assertThat(result.contents)
       .containsExactly(
         GitContent("a", "https://example.com/a", size = null),
         GitContent("d", "https://example.com/d", size = null),

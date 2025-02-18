@@ -8,51 +8,51 @@ import android.content.Context
 import androidx.annotation.NonUiContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.slack.circuit.codegen.annotations.CircuitInject
+import com.slack.circuit.retained.rememberRetained
 import com.slack.circuit.runtime.presenter.Presenter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import land.sungbin.androidx.fetcher.AndroidxRepository
 import land.sungbin.androidx.fetcher.AndroidxRepositoryCache
 import land.sungbin.androidx.fetcher.AndroidxRepositoryReader
-import land.sungbin.androidx.fetcher.GitContent
+import land.sungbin.androidx.fetcher.AndroidxRepositoryTree
 import land.sungbin.androidx.fetcher.GitHubAuthenticateException
+import land.sungbin.androidx.fetcher.GitItem
 import land.sungbin.androidx.fetcher.sha
+import land.sungbin.androidx.viewer.App
 import land.sungbin.androidx.viewer.MainActivity.Companion.dataStore
 import land.sungbin.androidx.viewer.R
 import land.sungbin.androidx.viewer.presenter.CodeScreenPresenter.Companion.ANDROIDX_REPO_CACHE_DIR
 import land.sungbin.androidx.viewer.screen.CodeScreen
-import land.sungbin.androidx.viewer.screen.assignAsBlob
-import land.sungbin.androidx.viewer.screen.assignAsTree
 import land.sungbin.androidx.viewer.util.PreferenceDefaults
 import land.sungbin.androidx.viewer.util.PreferencesKey
 import land.sungbin.androidx.viewer.util.StringResolver
 import land.sungbin.androidx.viewer.util.runSuspendCatching
-import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.Path.Companion.toOkioPath
+import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import thirdparty.Timber
 
-@Inject class CodeScreenPresenter(
-  @Assisted private val repoReader: AndroidxRepositoryReader,
-  private val sharedState: CodeScreen.SharedState,
-) : Presenter<CodeScreen.State> {
-  private val hasGHAccessToken
-    get() = repoReader.repo.hasGHAccessToken
+@CircuitInject(CodeScreen::class, AppScope::class)
+@Inject class CodeScreenPresenter : Presenter<CodeScreen.State> {
+  private val repoReader get() = App.preloadedRepoReader
+  private val hasGHAccessToken get() = repoReader.repo.hasGHAccessToken
 
-  suspend fun assigningFetch(
+  private suspend fun fetchTree(
     ref: String = AndroidxRepository.HOME_REF,
-    parent: GitContent? = null,
     noCache: Boolean = false,
     stringResolver: StringResolver? = null,
-  ): Result<Unit> =
+  ): Result<AndroidxRepositoryTree> =
     runSuspendCatching { repoReader.repo.fetchTree(ref, noCache) }
-      .mapCatching { source -> sharedState.assignAsTree(repoReader.readTree(source, parent, noCache)) }
+      .mapCatching { source -> repoReader.readTree(source, noCache) }
       .recoverCatching { exception ->
-        Timber.e(exception, "Failed to fetch the content.")
-
         if (exception is GitHubAuthenticateException) {
           val ghMessageRes = if (hasGHAccessToken) R.string.gh_fetch_failed_authenticate_expired else R.string.gh_fetch_failed_authenticate_needed
           val message = stringResolver?.getString(ghMessageRes) ?: exception.message ?: "GitHub authentication failed."
@@ -67,26 +67,33 @@ import thirdparty.Timber
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var gitItem by rememberRetained { mutableStateOf<GitItem>(GitItem.Tree(AndroidxRepositoryTree.Empty, parent = null)) }
+
     LaunchedEffect(Unit) {
-      assigningFetch(stringResolver = context::getString)
+      fetchTree(stringResolver = context::getString)
+        .onSuccess { gitItem = GitItem.Tree(it, parent = null) }
+        .onFailure { Timber.e(it) }
     }
 
-    return CodeScreen.State(item = sharedState.state.value) { event ->
+    return CodeScreen.State(item = gitItem) { event ->
       when (event) {
+        is CodeScreen.Event.Init -> gitItem = event.item
         is CodeScreen.Event.Fetch -> {
           scope.launch {
-            assigningFetch(
-              ref = event.parent?.sha ?: AndroidxRepository.HOME_REF,
-              parent = event.parent,
+            fetchTree(
+              ref = event.sha,
               noCache = event.noCache,
               stringResolver = context::getString,
             )
+              .onSuccess { gitItem = GitItem.Tree(it, event.parent) }
+              .onFailure { Timber.e(it) }
           }
         }
         is CodeScreen.Event.OpenBlob -> {
           scope.launch {
-            val raw = repoReader.readBlob(event.content.url, event.noCache)
-            sharedState.assignAsBlob(raw.utf8(), event.content)
+            runCatching { repoReader.readBlob(event.content.url, event.noCache) }
+              .onSuccess { gitItem = GitItem.Blob(it.utf8(), event.content, event.parent) }
+              .onFailure { Timber.e(it) }
           }
         }
         is CodeScreen.Event.ToggleFavorite -> TODO()

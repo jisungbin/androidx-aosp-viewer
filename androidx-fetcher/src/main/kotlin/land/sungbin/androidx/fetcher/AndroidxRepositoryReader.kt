@@ -4,6 +4,7 @@ package land.sungbin.androidx.fetcher
 
 import com.squareup.moshi.JsonReader
 import java.io.IOException
+import kotlinx.collections.immutable.toImmutableList
 import okio.ByteString
 import okio.ByteString.Companion.decodeBase64
 import okio.Source
@@ -12,13 +13,11 @@ import thirdparty.Timber
 
 public class AndroidxRepositoryReader(public val repo: AndroidxRepository) {
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  public fun readTree(
-    source: Source,
-    parent: GitContent? = null,
-    noCache: Boolean = false,
-  ): AndroidxRepositoryTree {
+  public fun readTree(source: Source, noCache: Boolean = false): AndroidxRepositoryTree {
     val source = source.buffer()
     val snapshotForError = source.buffer.snapshot()
+
+    var sha: String? = null
     var tree: List<GitContent>? = null
     var truncated = false
 
@@ -26,14 +25,12 @@ public class AndroidxRepositoryReader(public val repo: AndroidxRepository) {
       reader.beginObject()
       while (reader.hasNext()) {
         when (reader.nextName()) {
-          "tree" -> tree = readTreeContent(reader, parent, noCache)
+          "sha" -> sha = reader.nextString()
+          "tree" -> tree = readTreeContent(reader, noCache)
           "truncated" -> {
             if (reader.nextBoolean()) {
               truncated = true
-              Timber.w(
-                "The repository has too many files to read. " +
-                  "Some files may not be included in the list.",
-              )
+              Timber.w("The repository has too many files to read. Some files may not be included in the list.")
             }
           }
           else -> reader.skipValue()
@@ -43,28 +40,23 @@ public class AndroidxRepositoryReader(public val repo: AndroidxRepository) {
     }
 
     if (tree == null) {
-      Timber.e(
-        "No tree object found in the repository. " +
-          "Please check the given source: ${snapshotForError.utf8()}",
-      )
+      Timber.e("No tree object found in the repository. Please check the given source: ${snapshotForError.utf8()}")
       return AndroidxRepositoryTree.Empty
     }
 
     return AndroidxRepositoryTree(
+      checkNotNull(sha) { "The SHA of the tree is missing." },
       truncated,
       tree.sortedWith(
         compareBy(GitContent::isFile) // Folders first
           .thenBy(GitContent::path), // Alphabetical order
-      ),
+      )
+        .toImmutableList(),
     )
   }
 
   @Throws(IOException::class, GitHubAuthenticateException::class)
-  private fun readTreeContent(
-    reader: JsonReader,
-    parent: GitContent?,
-    noCache: Boolean,
-  ): List<GitContent> =
+  private fun readTreeContent(reader: JsonReader, noCache: Boolean): List<GitContent> =
     buildList {
       reader.beginArray()
       while (reader.hasNext()) {
@@ -84,14 +76,11 @@ public class AndroidxRepositoryReader(public val repo: AndroidxRepository) {
         reader.endObject()
 
         if (path == null || url == null) {
-          Timber.w(
-            "Required fields are missing in the tree object. " +
-              "(path: $path, url: $url)",
-          )
+          Timber.w("Required fields are missing in the tree object. (path: $path, url: $url)")
           continue
         }
 
-        add(GitContent(path, url, size, parent))
+        add(GitContent(path, url, size))
       }
       reader.endArray()
     }
@@ -117,8 +106,8 @@ public class AndroidxRepositoryReader(public val repo: AndroidxRepository) {
 
     if (content == null) {
       Timber.w(
-        "The content of the blob is missing. " +
-          "Please check the given source: ${source.buffer.snapshot().utf8()}",
+        "The content of the blob is missing. Please check the given source: " +
+          source.buffer.snapshot().utf8(),
       )
       error("The content of the blob is missing.")
     }

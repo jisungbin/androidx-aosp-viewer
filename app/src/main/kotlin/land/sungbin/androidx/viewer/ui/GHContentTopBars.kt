@@ -3,7 +3,8 @@
 package land.sungbin.androidx.viewer.ui
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.paddingFromBaseline
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +24,7 @@ import land.sungbin.androidx.fetcher.isRoot
 import land.sungbin.androidx.fetcher.paths
 import land.sungbin.androidx.viewer.R
 
-@Composable fun EmptyTopBar(modifier: Modifier = Modifier) {
+@Composable fun DefaultTopBar(modifier: Modifier = Modifier) {
   TopAppBar(
     modifier = modifier,
     title = {
@@ -49,14 +50,14 @@ import land.sungbin.androidx.viewer.R
     title = {
       Column {
         Text(
-          if (item.isBlob()) firstContent!!.path else firstContent?.parent?.path ?: AndroidxRepository.HOME_REF,
+          if (item.isBlob()) firstContent!!.path else item.parent?.paths ?: AndroidxRepository.HOME_REF,
           style = MaterialTheme.typography.titleMedium,
           maxLines = 1,
         )
-        if (firstContent?.isRoot == false) {
+        if (!item.isRoot) {
           Text(
-            "/${firstContent.parent!!.paths}",
-            modifier = Modifier.paddingFromBaseline(top = 6.dp),
+            "/${item.parent!!.paths}",
+            modifier = Modifier.padding(top = 2.dp),
             style = MaterialTheme.typography.labelMedium.copy(color = Color.Gray),
             maxLines = 1,
           )
@@ -83,5 +84,6 @@ import land.sungbin.androidx.viewer.R
         }
       }
     },
+    windowInsets = WindowInsets(0, 0, 0, 0),
   )
 }

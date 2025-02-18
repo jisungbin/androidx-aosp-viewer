@@ -4,13 +4,19 @@ package land.sungbin.androidx.fetcher
 
 import androidx.compose.runtime.Immutable
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 @Immutable public data class AndroidxRepositoryTree(
+  public val ref: String,
   public val truncated: Boolean,
-  private val tree: List<GitContent>,
-) : ImmutableList<GitContent> by tree.toImmutableList() {
+  public val contents: ImmutableList<GitContent>,
+) {
+  init {
+    require(ref.isNotEmpty()) { "Ref should not be empty" }
+  }
+
   public companion object {
-    public val Empty: AndroidxRepositoryTree = AndroidxRepositoryTree(truncated = false, tree = emptyList())
+    public val Empty: AndroidxRepositoryTree =
+      AndroidxRepositoryTree(ref = AndroidxRepository.HOME_REF, truncated = false, contents = persistentListOf())
   }
 }

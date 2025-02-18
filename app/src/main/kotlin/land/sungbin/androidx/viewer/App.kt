@@ -12,8 +12,7 @@ class App : Application() {
   override fun onCreate() {
     super.onCreate()
 
-    // TODO plant release tree before app release
-    Timber.plant(Timber.DebugTree())
+    Timber.plant(TimberAppTree(debug = BuildConfig.DEBUG))
     preloadedRepoReader = runBlocking { AndroidxRepositoryReader(applicationContext) }
   }
 

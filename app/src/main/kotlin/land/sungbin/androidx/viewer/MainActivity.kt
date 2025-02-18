@@ -31,14 +31,14 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.core.net.toUri
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.lifecycleScope
 import com.slack.circuit.backstack.rememberSaveableBackStack
@@ -47,24 +47,14 @@ import com.slack.circuit.foundation.NavigableCircuitContent
 import com.slack.circuit.foundation.rememberCircuitNavigator
 import com.slack.circuit.runtime.screen.Screen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
-import land.sungbin.androidx.fetcher.AndroidxRepository
-import land.sungbin.androidx.fetcher.GitContent
-import land.sungbin.androidx.fetcher.firstContentOrNull
-import land.sungbin.androidx.fetcher.isBlob
-import land.sungbin.androidx.fetcher.isFile
-import land.sungbin.androidx.fetcher.isRoot
-import land.sungbin.androidx.fetcher.paths
-import land.sungbin.androidx.fetcher.sha
 import land.sungbin.androidx.viewer.di.KotlinInjectAppComponent
 import land.sungbin.androidx.viewer.di.create
 import land.sungbin.androidx.viewer.screen.CodeScreen
 import land.sungbin.androidx.viewer.screen.NoteScreen
 import land.sungbin.androidx.viewer.screen.SettingScreen
-import land.sungbin.androidx.viewer.ui.EmptyTopBar
-import land.sungbin.androidx.viewer.ui.GHContentTopBar
 import land.sungbin.androidx.viewer.ui.LocalSnackbarHost
-import land.sungbin.androidx.viewer.util.conditionalLambda
 
 private data class NavigationBarItemData(
   val screen: Screen,
@@ -98,11 +88,9 @@ private data class NavigationBarItemData(
 
 class MainActivity : ComponentActivity() {
   private val apps by lazy { KotlinInjectAppComponent::class.create() }
-  private val codeScreenPresenter by lazy { apps.codeScreenPresenter(App.preloadedRepoReader) }
   private val circuit by lazy {
     apps.circuit
       .newBuilder()
-      .addPresenter<CodeScreen, CodeScreen.State>(codeScreenPresenter)
       .addPresenter<SettingScreen, SettingScreen.State>(apps.settingScreenPresenter(dataStore))
       .build()
   }
@@ -113,12 +101,16 @@ class MainActivity : ComponentActivity() {
 
     setContent {
       CircuitCompositionLocals(circuit) {
-        val scope = rememberCoroutineScope()
         val backStack = rememberSaveableBackStack(CodeScreen)
         val navigator = rememberCircuitNavigator(backStack)
         val snackbarHost = remember { SnackbarHostState() }
 
-        val gitItem = apps.codeScreenSharedState.state.value
+        LaunchedEffect(Unit) {
+          TimberAppTree.exceptions.consumeEach { exception ->
+            val message = exception.message ?: exception.cause?.message
+            snackbarHost.showSnackbar(message ?: getString(R.string.error_unknown, exception::class.simpleName ?: "null"))
+          }
+        }
 
         MaterialTheme(colorScheme = dynamicThemeScheme()) {
           CompositionLocalProvider(
@@ -127,38 +119,6 @@ class MainActivity : ComponentActivity() {
           ) {
             Scaffold(
               modifier = Modifier.fillMaxSize(),
-              topBar = {
-                if (backStack.topRecord?.screen == CodeScreen) {
-                  val firstContent = gitItem.firstContentOrNull()
-                  if (firstContent == null) {
-                    EmptyTopBar(modifier = Modifier.fillMaxWidth())
-                  } else {
-                    GHContentTopBar(
-                      modifier = Modifier.fillMaxWidth(),
-                      item = gitItem,
-                      onBackClick = conditionalLambda(
-                        { !firstContent.isRoot || firstContent.isRoot && gitItem.isBlob() },
-                        onBackPressedDispatcher::onBackPressed,
-                      ),
-                      onRefresh = {
-                        scope.launch {
-                          codeScreenPresenter.assigningFetch(
-                            ref = firstContent.sha,
-                            parent = firstContent.takeUnless(GitContent::isRoot),
-                            noCache = true,
-                            stringResolver = ::getString,
-                          )
-                        }
-                      },
-                      onOpenWeb = {
-                        startActivity(Intent(Intent.ACTION_VIEW, firstContent.githubLink(gitItem.isBlob()).toUri()))
-                      },
-                    )
-                  }
-                } else {
-                  EmptyTopBar(modifier = Modifier.fillMaxWidth())
-                }
-              },
               bottomBar = {
                 NavigationBar(modifier = Modifier.fillMaxWidth()) {
                   NavigationBarItemData.Defaults.forEach { item ->
@@ -205,14 +165,6 @@ class MainActivity : ComponentActivity() {
       }
     }
   }
-
-  private fun GitContent.githubLink(blob: Boolean): String =
-    buildString {
-      append("https://github.com/androidx/androidx/blob/")
-      append(AndroidxRepository.HOME_REF)
-      append('/')
-      append(if (blob && isFile) paths else parent?.paths.orEmpty())
-    }
 
   companion object {
     private const val SETTINGS_PREFERENCES_NAME = "settings"

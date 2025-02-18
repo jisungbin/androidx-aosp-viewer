@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.paddingFromBaseline
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -108,7 +107,7 @@ private val notNumberRegex = Regex("\\D")
         Text(stringResource(R.string.preferences_max_cache_size), style = MaterialTheme.typography.bodyMedium)
         Text(
           stringResource(R.string.preferences_cache_disable_hint),
-          modifier = Modifier.paddingFromBaseline(top = 15.dp),
+          modifier = Modifier.padding(top = 5.dp),
           style = MaterialTheme.typography.labelSmall,
         )
       }
@@ -130,7 +129,7 @@ private val notNumberRegex = Regex("\\D")
       Text(stringResource(R.string.preferences_gh_login), style = MaterialTheme.typography.bodyMedium)
       Button(
         modifier = Modifier
-          .padding(top = 10.dp)
+          .padding(top = 5.dp)
           .fillMaxWidth(),
         onClick = { state.eventSink(ToggleGitHubLogin(windowHost = activity)) },
       ) {
