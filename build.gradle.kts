@@ -5,7 +5,7 @@ import com.diffplug.gradle.spotless.SpotlessExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-  alias(libs.plugins.andriod.application) apply false
+  alias(libs.plugins.android.application) apply false
   kotlin("android") version libs.versions.kotlin.asProvider() apply false
   kotlin("jvm") version libs.versions.kotlin.asProvider() apply false
   kotlin("plugin.compose") version libs.versions.kotlin.asProvider() apply false
