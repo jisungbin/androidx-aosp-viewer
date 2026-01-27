@@ -20,7 +20,7 @@ compose-lint-slack = "1.4.2"
 
 circuit = "0.26.1"
 kotlininject = "0.7.2"
-kotlininject-anvil = "0.1.2"
+kotlininject-anvil = "0.1.7"
 
 okio = "3.10.2"
 okhttp = "5.0.0-alpha.14"
