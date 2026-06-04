@@ -7,7 +7,7 @@ kotlin = "2.1.10"
 kotlin-ksp = "2.1.10-1.0.30"
 kotlin-coroutines = "1.10.1"
 kotlin-immutableCollections = "0.3.8"
-kotlin-poko = "0.18.2"
+kotlin-poko = "0.23.1"
 
 androidx-activity = "1.10.0"
 androidx-datastore = "1.1.2"
