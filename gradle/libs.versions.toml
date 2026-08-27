@@ -18,7 +18,7 @@ compose-stableMarker = "1.0.5"
 compose-lottie = "0.6.2"
 compose-lint-slack = "1.4.2"
 
-circuit = "0.26.1"
+circuit = "0.38.0"
 kotlininject = "0.7.2"
 kotlininject-anvil = "0.1.2"
 
